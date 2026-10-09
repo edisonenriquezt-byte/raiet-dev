@@ -182,8 +182,8 @@
     }
 
     .hc-tabs { display: flex; gap: 6px; margin-bottom: 12px; background: var(--card-inner); padding: 4px; border-radius: 8px; border: 1px solid var(--card-border-subtle); }
-    .hc-tab-btn { flex: 1; padding: 7px; border: none; background: transparent; color: var(--text-muted); font-size: 0.75rem; font-weight: 700; border-radius: 6px; cursor: pointer; text-align: center; }
-    .hc-tab-btn.active { background: #222a3d; color: #fff; }
+    .hc-tab-btn { flex: 1; padding: 8px 4px; border: none; background: transparent; color: var(--text-muted); font-size: 0.75rem; font-weight: 700; border-radius: 6px; cursor: pointer; text-align: center; }
+    .hc-tab-btn.active { background: #222a3d; color: #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.4); }
 
     .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 200; padding: 16px; }
     .modal.active { display: flex; }
@@ -442,7 +442,7 @@
     </div>
   </div>
 
-  <!-- MODAL EVOLUCIÓN CLÍNICA -->
+  <!-- MODALES EXPEDIENTE CLÍNICO -->
   <div id="modal-pac-evo" class="modal">
     <div class="modal-box">
       <h3>Nota de Evolución / Consulta</h3>
@@ -463,7 +463,6 @@
     </div>
   </div>
 
-  <!-- MODAL RECETA MÉDICA -->
   <div id="modal-pac-rec" class="modal">
     <div class="modal-box">
       <h3>Prescripción / Receta Médica</h3>
@@ -479,7 +478,6 @@
     </div>
   </div>
 
-  <!-- MODAL EXAMEN / LABORATORIO -->
   <div id="modal-pac-exa" class="modal">
     <div class="modal-box">
       <h3>Examen de Laboratorio / Imagen</h3>
@@ -495,7 +493,6 @@
     </div>
   </div>
 
-  <!-- VISOR GENERAL -->
   <div id="modal-visor" class="modal" onclick="cerrarModal('modal-visor')">
     <div class="modal-box" style="text-align: center; background: rgba(11, 14, 23, 0.96);" onclick="event.stopPropagation()">
       <h4 style="margin-bottom: 10px; color: #fff;">Visor de Documento</h4>
@@ -1334,20 +1331,82 @@
       cont.innerHTML = html;
     }
 
-    // 4. INVENTARIO (CPP PONDERADO Y PRECIOS DINÁMICOS)
-    function renderMovsHtml(movs) {
-      if (!movs || movs.length === 0) return '';
+    // 4. INVENTARIO (CPP RECALCULADO CON ANULACIÓN DE ASIENTOS)
+    function recalcularKardex(prod) {
+      var movs = (prod.inventario_movimientos || []).slice().reverse();
+      var stock = 0;
+      var costoAcum = 0;
+      var cantCompras = 0;
+      var ultCosto = 0;
+
+      for (var i = 0; i < movs.length; i++) {
+        var m = movs[i];
+        var c = Number(m.cantidad) || 0;
+        var pu = Number(m.precio_unitario) || 0;
+        if (m.tipo === 'compra') {
+          costoAcum += (c * pu);
+          cantCompras += c;
+          stock += c;
+          ultCosto = pu;
+        } else if (m.tipo === 'venta') {
+          stock = Math.max(0, stock - c);
+        }
+      }
+
+      var nuevoCpp = cantCompras > 0 ? (costoAcum / cantCompras) : ultCosto;
+      nuevoCpp = Number(nuevoCpp.toFixed(2));
+      prod.stock = stock;
+      prod.costo_promedio = nuevoCpp;
+      prod.ultimo_costo = ultCosto;
+      prod.precio_mayor = Number((nuevoCpp * 1.15).toFixed(2));
+      prod.precio_unidad = Number((nuevoCpp * 1.35).toFixed(2));
+    }
+
+    async function borrarMovimientoInventario(prodId, movId) {
+      if (!confirm('¿Anular este asiento del Kárdex? Se revertirá el stock y se recalculará el CPP.')) return;
+      var prod = cacheInv.find(function(x) { return String(x.id) === String(prodId); });
+      if (!prod) return;
+
+      prod.inventario_movimientos = (prod.inventario_movimientos || []).filter(function(m) {
+        return String(m.id) !== String(movId);
+      });
+
+      recalcularKardex(prod);
+      guardarMemoriaLocal();
+      dibujarInventario();
+
+      if (navigator.onLine && db && !String(movId).startsWith('loc_')) {
+        try {
+          await db.from('inventario_movimientos').delete().eq('id', movId);
+          await db.from('inventario_productos').update({
+            stock: prod.stock,
+            costo_promedio: prod.costo_promedio,
+            ultimo_costo: prod.ultimo_costo,
+            precio_mayor: prod.precio_mayor,
+            precio_unidad: prod.precio_unidad
+          }).eq('id', prodId);
+        } catch(e) {}
+      }
+    }
+
+    function renderMovsHtml(prodId, movs) {
+      if (!movs || movs.length === 0) return '<p style="font-size:0.75rem; color:var(--text-muted); padding:6px 0;">Sin movimientos en Kárdex.</p>';
       var res = '';
       for (var i = 0; i < movs.length; i++) {
         var m = movs[i];
         var esCompra = m.tipo === 'compra';
+        var pu = Number(m.precio_unitario || 0).toFixed(2);
+        var tot = Number(m.total || 0).toFixed(2);
         res += '<div class="ledger-item">' +
           '<div class="det">' +
-            '<b>' + (esCompra ? '🟢 Entrada' : '🔴 Salida') + ': ' + m.cantidad + ' unds</b>' +
+            '<b>' + (esCompra ? '🟢 Entrada' : '🔴 Salida') + ': ' + m.cantidad + ' unds a $' + pu + ' c/u</b>' +
             '<span style="font-size:0.7rem; color:var(--text-muted);">' + (m.detalle || '') + ' • ' + (m.fecha || '') + '</span>' +
             (m.foto_url ? '<button class="thumb-btn" onclick="abrirVisor(\'' + m.foto_url + '\')">🧾 Ver Factura / Recibo</button>' : '') +
           '</div>' +
-          '<div class="actions"><b style="color:' + (esCompra ? '#38bdf8' : 'var(--success)') + ';">$' + Number(m.total || 0).toFixed(2) + '</b></div>' +
+          '<div class="actions">' +
+            '<b style="color:' + (esCompra ? '#38bdf8' : 'var(--success)') + ';">$' + tot + '</b>' +
+            '<button class="btn-del-mini" title="Anular este asiento" onclick="borrarMovimientoInventario(\'' + prodId + '\', \'' + m.id + '\')">✕</button>' +
+          '</div>' +
         '</div>';
       }
       return res;
@@ -1436,18 +1495,6 @@
       procesarArchivoImagen(document.getElementById('inv-compra-foto'), async function(fotoBase64) {
         var prod = cacheInv.find(function(x) { return String(x.id) === String(id); });
         if (prod) {
-          var stockAnt = Number(prod.stock) || 0;
-          var cppAnt = Number(prod.costo_promedio) || 0;
-          var nuevoStock = stockAnt + cant;
-          var nuevoCpp = nuevoStock > 0 ? (((stockAnt * cppAnt) + (cant * costo)) / nuevoStock) : costo;
-          nuevoCpp = Number(nuevoCpp.toFixed(2));
-
-          prod.stock = nuevoStock;
-          prod.costo_promedio = nuevoCpp;
-          prod.ultimo_costo = costo;
-          prod.precio_mayor = Number((nuevoCpp * 1.15).toFixed(2));
-          prod.precio_unidad = Number((nuevoCpp * 1.35).toFixed(2));
-
           if (!prod.inventario_movimientos) prod.inventario_movimientos = [];
           var nuevoMov = {
             id: 'loc_mov_' + Date.now(), producto_id: id, tipo: 'compra', cantidad: cant,
@@ -1455,6 +1502,7 @@
             fecha: hoyStr, detalle: detalle, foto_url: fotoBase64
           };
           prod.inventario_movimientos.unshift(nuevoMov);
+          recalcularKardex(prod);
           guardarMemoriaLocal();
           dibujarInventario();
           cerrarModal('modal-inv-compra');
@@ -1500,7 +1548,6 @@
       var pUnit = tipoPrecio === 'mayor' ? prod.precio_mayor : prod.precio_unidad;
 
       procesarArchivoImagen(document.getElementById('inv-venta-foto'), async function(fotoBase64) {
-        prod.stock = Math.max(0, prod.stock - cant);
         if (!prod.inventario_movimientos) prod.inventario_movimientos = [];
         var nuevoMov = {
           id: 'loc_mov_' + Date.now(), producto_id: id, tipo: 'venta', cantidad: cant,
@@ -1508,6 +1555,7 @@
           fecha: hoyStr, detalle: detalle + ' (' + (tipoPrecio === 'mayor' ? 'PVP Mayor' : 'Unidad') + ')', foto_url: fotoBase64
         };
         prod.inventario_movimientos.unshift(nuevoMov);
+        recalcularKardex(prod);
         guardarMemoriaLocal();
         dibujarInventario();
         cerrarModal('modal-inv-venta');
@@ -1573,7 +1621,7 @@
             (x.foto_url ? '<div style="margin: 8px 0;"><button class="thumb-btn" onclick="abrirVisor(\'' + x.foto_url + '\')">📷 Ver Foto Producto</button></div>' : '') +
             '<div class="ledger-section">' +
               '<div class="ledger-title"><span>Movimientos Kárdex:</span><span style="font-size:0.75rem; color:var(--text-muted);">' + movs.length + ' regs</span></div>' +
-              renderMovsHtml(movs) +
+              renderMovsHtml(x.id, movs) +
             '</div>' +
             '<div style="display:flex; justify-content: flex-end; margin-top: 14px;">' +
               '<button class="btn btn-danger" onclick="borrarProducto(\'' + x.id + '\')">✕ Eliminar Producto</button>' +
@@ -1643,7 +1691,26 @@
       if (navigator.onLine && db) {
         try {
           var res = await db.from('pacientes').select('*, pacientes_evoluciones(*), pacientes_recetas(*), pacientes_examenes(*)').order('creado_el', { ascending: false });
-          if (!res.error && res.data) { cachePac = res.data; guardarMemoriaLocal(); dibujarPacientes(); }
+          if (!res.error && res.data) {
+            cachePac = res.data;
+            guardarMemoriaLocal();
+            dibujarPacientes();
+          } else {
+            var resB = await db.from('pacientes').select('*').order('creado_el', { ascending: false });
+            if (!resB.error && resB.data) {
+              for (var i = 0; i < resB.data.length; i++) {
+                var localP = cachePac.find(function(lp) { return String(lp.id) === String(resB.data[i].id); });
+                if (localP) {
+                  resB.data[i].pacientes_evoluciones = localP.pacientes_evoluciones || localP.pacientes_consultas || [];
+                  resB.data[i].pacientes_recetas = localP.pacientes_recetas || [];
+                  resB.data[i].pacientes_examenes = localP.pacientes_examenes || [];
+                }
+              }
+              cachePac = resB.data;
+              guardarMemoriaLocal();
+              dibujarPacientes();
+            }
+          }
         } catch(e) {}
       }
     }
@@ -1809,14 +1876,14 @@
       if (q) lista = lista.filter(function(x) { return x.nombre && x.nombre.toLowerCase().includes(q); });
 
       var cont = document.getElementById('lista-pacientes');
-      if (!lista.length) { cont.innerHTML = '<p style="color:var(--text-muted); text-align:center; padding:20px;">No hay expedientes clínicos registrados.</p>'; return; }
+      if (!lista.length) { cont.innerHTML = '<p style="color:var(--text-muted); text-align:center; padding:20px;">No hay expedientes clínicos registrados. Agrega uno arriba para abrir su historial.</p>'; return; }
 
       var html = '';
       for (var i = 0; i < lista.length; i++) {
         var x = lista[i];
         var abierto = pacAbiertos.includes(String(x.id));
         var currentSubTab = subTabPacientes[x.id] || 'evo';
-        var evos = x.pacientes_evoluciones || [];
+        var evos = x.pacientes_evoluciones || x.pacientes_consultas || [];
         var recs = x.pacientes_recetas || [];
         var exas = x.pacientes_examenes || [];
 
