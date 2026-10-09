@@ -1,0 +1,18 @@
+{
+  "name": "Raiet Suite",
+  "short_name": "Raiet",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#090a0d",
+  "theme_color": "#090a0d",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='100' fill='%23090a0d'/><circle cx='256' cy='256' r='180' fill='%232563eb'/><text x='50%' y='55%' font-family='sans-serif' font-size='180' font-weight='bold' fill='white' text-anchor='middle' dominant-baseline='middle'>R</text></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
