@@ -29,6 +29,7 @@
       --danger: #ef4444;
       --warning: #f59e0b;
       --purple: #a855f7;
+      --teal: #14b8a6;
       --matte-steel: #94a3b8;
     }
     * { 
@@ -47,7 +48,7 @@
       user-select: none;
     }
     input, textarea, select { user-select: auto; }
-    .container { max-width: 560px; margin: 0 auto; padding: 14px; }
+    .container { max-width: 580px; margin: 0 auto; padding: 14px; }
 
     header.brand-header {
       padding: 12px 14px; margin-bottom: 14px;
@@ -180,9 +181,14 @@
       cursor: pointer; border: none; font-weight: 600; width: fit-content; margin-top: 3px;
     }
 
+    /* SUB-PESTAÑAS DE HISTORIA CLÍNICA */
+    .hc-tabs { display: flex; gap: 6px; margin-bottom: 12px; background: var(--card-inner); padding: 4px; border-radius: 8px; border: 1px solid var(--card-border-subtle); }
+    .hc-tab-btn { flex: 1; padding: 7px; border: none; background: transparent; color: var(--text-muted); font-size: 0.75rem; font-weight: 700; border-radius: 6px; cursor: pointer; text-align: center; }
+    .hc-tab-btn.active { background: #222a3d; color: #fff; }
+
     .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 200; padding: 16px; }
     .modal.active { display: flex; }
-    .modal-box { background: var(--card); border: 1px solid var(--card-border); border-radius: 14px; max-width: 440px; width: 100%; padding: 18px; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
+    .modal-box { background: var(--card); border: 1px solid var(--card-border); border-radius: 14px; max-width: 460px; width: 100%; padding: 18px; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
     .modal-box h3 { color: #fff; margin-bottom: 10px; }
     .img-preview-full { max-width: 100%; max-height: 70vh; border-radius: 8px; display: block; margin: 0 auto; object-fit: contain; }
   </style>
@@ -287,13 +293,13 @@
       <div id="lista-inventario"></div>
     </section>
 
-    <!-- 5. PACIENTES / HISTORIA CLÍNICA -->
+    <!-- 5. PACIENTES / EXPEDIENTE CLÍNICO -->
     <section id="tab-pacientes" class="tab-content">
       <div class="card">
-        <div class="form-group"><label>Nombre Completo Paciente</label><input type="text" id="pac-nombre" placeholder="Ej. Juan Pérez"></div>
+        <div class="form-group"><label>Nombre Completo Paciente</label><input type="text" id="pac-nombre" placeholder="Ej. Dr. Juan Pérez / Paciente"></div>
         <div class="form-group"><label>Teléfono / Celular</label><input type="tel" id="pac-telefono" placeholder="Ej. 0991234567"></div>
-        <div class="form-group"><label>Antecedentes / Alergias / Notas</label><textarea id="pac-antecedentes" placeholder="Ej. Alérgico a penicilina, Hipertenso..."></textarea></div>
-        <button class="btn btn-primary" style="background: #9333ea;" onclick="guardarPaciente()">+ Registrar Ficha de Paciente</button>
+        <div class="form-group"><label>Antecedentes Patológicos / Alergias</label><textarea id="pac-antecedentes" placeholder="Ej. Alérgico a Penicilina, Hipertenso..."></textarea></div>
+        <button class="btn btn-primary" style="background: #9333ea;" onclick="guardarPaciente()">+ Crear Expediente Clínico</button>
       </div>
       <div class="search-filter-box">
         <input type="text" id="buscar-pac" placeholder="🔍 Buscar paciente por nombre..." oninput="renderPacientes()">
@@ -302,7 +308,7 @@
     </section>
   </div>
 
-  <!-- MODAL EDITAR AGENDA -->
+  <!-- MODALES AGENDA -->
   <div id="modal-editar-agenda" class="modal">
     <div class="modal-box">
       <h3>Editar Cita</h3>
@@ -318,7 +324,7 @@
     </div>
   </div>
 
-  <!-- MODAL ABONO (COBROS) -->
+  <!-- MODALES COBROS -->
   <div id="modal-abono" class="modal">
     <div class="modal-box">
       <h3>Registrar Abono</h3>
@@ -338,7 +344,6 @@
     </div>
   </div>
 
-  <!-- MODAL CARGO (COBROS) -->
   <div id="modal-cargo" class="modal">
     <div class="modal-box">
       <h3>Sumar Deuda / Factura Adicional</h3>
@@ -357,7 +362,7 @@
     </div>
   </div>
 
-  <!-- MODAL PAGO CUOTA (POR PAGAR) -->
+  <!-- MODALES PAGOS -->
   <div id="modal-pago-cuota" class="modal">
     <div class="modal-box">
       <h3>Registrar Pago Realizado</h3>
@@ -377,7 +382,6 @@
     </div>
   </div>
 
-  <!-- MODAL CARGO PAGAR (POR PAGAR) -->
   <div id="modal-cargo-pagar" class="modal">
     <div class="modal-box">
       <h3>Sumar Deuda / Factura Recibida</h3>
@@ -396,7 +400,7 @@
     </div>
   </div>
 
-  <!-- MODAL COMPRA INVENTARIO (ENTRADA CON CPP) -->
+  <!-- MODALES INVENTARIO -->
   <div id="modal-inv-compra" class="modal">
     <div class="modal-box">
       <h3>Registrar Compra (Entrada)</h3>
@@ -415,7 +419,6 @@
     </div>
   </div>
 
-  <!-- MODAL VENTA INVENTARIO (SALIDA) -->
   <div id="modal-inv-venta" class="modal">
     <div class="modal-box">
       <h3>Registrar Venta (Salida)</h3>
@@ -440,38 +443,69 @@
     </div>
   </div>
 
-  <!-- MODAL NUEVA CONSULTA MÉDICA -->
-  <div id="modal-pac-consulta" class="modal">
+  <!-- MODAL EVOLUCIÓN CLÍNICA -->
+  <div id="modal-pac-evo" class="modal">
     <div class="modal-box">
-      <h3>Nueva Consulta / Evolución</h3>
-      <p id="modal-pac-nombre" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;"></p>
-      <input type="hidden" id="modal-pac-id">
-      <div class="form-group"><label>Motivo de Consulta</label><input type="text" id="con-motivo" placeholder="Ej. Dolor lumbar, Control de ortodoncia..."></div>
-      <div class="form-group"><label>Diagnóstico / Observación</label><textarea id="con-diagnostico" placeholder="Ej. Contractura muscular, Caries grado 2..."></textarea></div>
-      <div class="form-group"><label>Tratamiento / Receta Indicada</label><textarea id="con-tratamiento" placeholder="Ej. Ibuprofeno 600mg cada 8h..."></textarea></div>
+      <h3>Nota de Evolución / Consulta</h3>
+      <p id="modal-pac-evo-nombre" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;"></p>
+      <input type="hidden" id="modal-pac-evo-id">
+      <div class="form-group"><label>Motivo de Consulta</label><input type="text" id="evo-motivo" placeholder="Ej. Dolor articular agudo, Control mensual"></div>
+      <div class="form-group"><label>Diagnóstico Clínico</label><textarea id="evo-diag" placeholder="Ej. Artritis reactiva fase moderada"></textarea></div>
+      <div class="form-group"><label>Plan de Evolución</label><textarea id="evo-plan" placeholder="Ej. Terapia física, reposo relativo..."></textarea></div>
       <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
-        <div class="form-group"><label>Peso (Kg)</label><input type="number" step="0.1" id="con-peso" placeholder="70.5"></div>
-        <div class="form-group"><label>Estatura (cm)</label><input type="number" id="con-estatura" placeholder="172"></div>
-        <div class="form-group"><label>Costo ($)</label><input type="number" step="0.01" id="con-costo" placeholder="30.00"></div>
+        <div class="form-group"><label>Peso (Kg)</label><input type="number" step="0.1" id="evo-peso" placeholder="72.0"></div>
+        <div class="form-group"><label>Estatura (cm)</label><input type="number" id="evo-estatura" placeholder="170"></div>
+        <div class="form-group"><label>Costo ($)</label><input type="number" step="0.01" id="evo-costo" placeholder="35.00"></div>
       </div>
-      <div class="form-group"><label>Receta Médica / Exámenes Lab (Foto)</label><input type="file" id="con-foto" accept="image/*"></div>
       <div style="display: flex; gap: 8px; margin-top: 14px;">
-        <button class="btn btn-primary" style="background:#9333ea; flex:1;" onclick="confirmarConsultaPaciente()">Guardar en Historial</button>
-        <button class="btn btn-secondary" style="flex: 1;" onclick="cerrarModal('modal-pac-consulta')">Cancelar</button>
+        <button class="btn btn-primary" style="background:#9333ea; flex:1;" onclick="confirmarEvolucion()">Guardar Evolución</button>
+        <button class="btn btn-secondary" style="flex: 1;" onclick="cerrarModal('modal-pac-evo')">Cancelar</button>
       </div>
     </div>
   </div>
 
-  <!-- VISOR DE COMPROBANTES / FACTURAS / RECETAS -->
+  <!-- MODAL RECETA MÉDICA -->
+  <div id="modal-pac-rec" class="modal">
+    <div class="modal-box">
+      <h3>Prescripción / Receta Médica</h3>
+      <p id="modal-pac-rec-nombre" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;"></p>
+      <input type="hidden" id="modal-pac-rec-id">
+      <div class="form-group"><label>Medicamentos y Dosis</label><textarea id="rec-meds" placeholder="Ej. Amoxicilina 875mg (1 tab c/12h por 7 días)"></textarea></div>
+      <div class="form-group"><label>Indicaciones de Uso</label><textarea id="rec-ind" placeholder="Ej. Tomar después de las comidas. Abundante líquido."></textarea></div>
+      <div class="form-group"><label>Receta Física Firmada (Foto)</label><input type="file" id="rec-foto" accept="image/*"></div>
+      <div style="display: flex; gap: 8px; margin-top: 14px;">
+        <button class="btn btn-primary" style="background:#0284c7; flex:1;" onclick="confirmarReceta()">Guardar Receta</button>
+        <button class="btn btn-secondary" style="flex: 1;" onclick="cerrarModal('modal-pac-rec')">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL EXAMEN / LABORATORIO -->
+  <div id="modal-pac-exa" class="modal">
+    <div class="modal-box">
+      <h3>Examen de Laboratorio / Imagen</h3>
+      <p id="modal-pac-exa-nombre" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;"></p>
+      <input type="hidden" id="modal-pac-exa-id">
+      <div class="form-group"><label>Tipo de Estudio</label><input type="text" id="exa-tipo" placeholder="Ej. Biometría hemática, Rayos X Tórax"></div>
+      <div class="form-group"><label>Conclusión / Interpretación</label><textarea id="exa-concl" placeholder="Ej. Parámetros normales. Sin infiltrados activos."></textarea></div>
+      <div class="form-group"><label>Resultado / Placa / Informe (Foto)</label><input type="file" id="exa-foto" accept="image/*"></div>
+      <div style="display: flex; gap: 8px; margin-top: 14px;">
+        <button class="btn btn-primary" style="background:#0d9488; flex:1;" onclick="confirmarExamen()">Guardar Examen</button>
+        <button class="btn btn-secondary" style="flex: 1;" onclick="cerrarModal('modal-pac-exa')">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- VISOR GENERAL -->
   <div id="modal-visor" class="modal" onclick="cerrarModal('modal-visor')">
     <div class="modal-box" style="text-align: center; background: rgba(11, 14, 23, 0.96);" onclick="event.stopPropagation()">
-      <h4 style="margin-bottom: 10px; color: #fff;">Documento / Factura / Receta</h4>
+      <h4 style="margin-bottom: 10px; color: #fff;">Visor de Documento</h4>
       <img id="img-ampliada" class="img-preview-full" src="" alt="Comprobante">
       <button class="btn btn-secondary" style="margin-top: 14px; width: 100%;" onclick="cerrarModal('modal-visor')">Cerrar</button>
     </div>
   </div>
 
-  <!-- NAVEGACIÓN INFERIOR (5 PESTAÑAS) -->
+  <!-- NAVEGACIÓN INFERIOR (5 MÓDULOS) -->
   <nav class="bottom-nav">
     <button class="nav-btn active" onclick="cambiarPestana('agenda', this)"><svg viewBox="0 0 24 24"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11z"/></svg>Agenda</button>
     <button class="nav-btn" onclick="cambiarPestana('cobros', this)"><svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 1.34 5 3s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>Cobros</button>
@@ -482,9 +516,7 @@
 
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(function(regs) {
-        for (var reg of regs) { reg.unregister(); }
-      });
+      navigator.serviceWorker.getRegistrations().then(regs => { for (let r of regs) r.unregister(); });
     }
 
     const SUPABASE_URL = 'https://fwkdtcecdwxezzkphxiv.supabase.co';
@@ -495,21 +527,22 @@
     function setHoy(id) { const el = document.getElementById(id); if (el) el.value = hoyStr; }
     setHoy('cobro-fecha'); setHoy('pago-fecha'); setHoy('abono-fecha'); setHoy('cargo-fecha'); setHoy('cuota-fecha'); setHoy('cargo-pagar-fecha');
 
-    var cobrosAbiertos = [];
-    var pagosAbiertos = [];
-    var invAbiertos = [];
-    var pacAbiertos = [];
+    let cobrosAbiertos = [];
+    let pagosAbiertos = [];
+    let invAbiertos = [];
+    let pacAbiertos = [];
+    let subTabPacientes = {}; // pacId: 'evo' | 'rec' | 'exa'
     
-    var cacheAgenda = JSON.parse(localStorage.getItem('raiet_dev_agenda') || '[]');
-    var cacheCobros = JSON.parse(localStorage.getItem('raiet_dev_cobros') || '[]');
-    var cachePagos = JSON.parse(localStorage.getItem('raiet_dev_pagos') || '[]');
-    var cacheInv = JSON.parse(localStorage.getItem('raiet_dev_inv') || '[]');
-    var cachePac = JSON.parse(localStorage.getItem('raiet_dev_pac') || '[]');
+    let cacheAgenda = JSON.parse(localStorage.getItem('raiet_dev_agenda') || '[]');
+    let cacheCobros = JSON.parse(localStorage.getItem('raiet_dev_cobros') || '[]');
+    let cachePagos = JSON.parse(localStorage.getItem('raiet_dev_pagos') || '[]');
+    let cacheInv = JSON.parse(localStorage.getItem('raiet_dev_inv') || '[]');
+    let cachePac = JSON.parse(localStorage.getItem('raiet_dev_pac') || '[]');
 
     function checkConexion() {
-      var badge = document.getElementById('conn-badge');
-      var dot = document.getElementById('conn-dot');
-      var txt = document.getElementById('conn-status-text');
+      const badge = document.getElementById('conn-badge');
+      const dot = document.getElementById('conn-dot');
+      const txt = document.getElementById('conn-status-text');
       if (navigator.onLine) {
         badge.className = 'system-status status-online';
         dot.className = 'status-dot dot-online';
@@ -531,40 +564,33 @@
         localStorage.setItem('raiet_dev_inv', JSON.stringify(cacheInv));
         localStorage.setItem('raiet_dev_pac', JSON.stringify(cachePac));
       } catch (e) {
-        console.warn('Memoria llena:', e);
+        console.warn('Memoria local llena:', e);
       }
       actualizarPanelAlertas();
     }
 
     function toggleCobro(id) {
       id = String(id);
-      var idx = cobrosAbiertos.indexOf(id);
-      if (idx > -1) cobrosAbiertos.splice(idx, 1);
-      else cobrosAbiertos.push(id);
+      const idx = cobrosAbiertos.indexOf(id);
+      if (idx > -1) cobrosAbiertos.splice(idx, 1); else cobrosAbiertos.push(id);
       dibujarCobros();
     }
-
     function togglePago(id) {
       id = String(id);
-      var idx = pagosAbiertos.indexOf(id);
-      if (idx > -1) pagosAbiertos.splice(idx, 1);
-      else pagosAbiertos.push(id);
+      const idx = pagosAbiertos.indexOf(id);
+      if (idx > -1) pagosAbiertos.splice(idx, 1); else pagosAbiertos.push(id);
       dibujarPagos();
     }
-
     function toggleInv(id) {
       id = String(id);
-      var idx = invAbiertos.indexOf(id);
-      if (idx > -1) invAbiertos.splice(idx, 1);
-      else invAbiertos.push(id);
+      const idx = invAbiertos.indexOf(id);
+      if (idx > -1) invAbiertos.splice(idx, 1); else invAbiertos.push(id);
       dibujarInventario();
     }
-
     function togglePac(id) {
       id = String(id);
-      var idx = pacAbiertos.indexOf(id);
-      if (idx > -1) pacAbiertos.splice(idx, 1);
-      else pacAbiertos.push(id);
+      const idx = pacAbiertos.indexOf(id);
+      if (idx > -1) pacAbiertos.splice(idx, 1); else pacAbiertos.push(id);
       dibujarPacientes();
     }
 
@@ -580,93 +606,90 @@
     function cambiarPestana(tab, btn) {
       document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
       document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
-      var target = document.getElementById('tab-' + tab);
+      const target = document.getElementById('tab-' + tab);
       if (target) target.classList.add('active');
       if (btn) btn.classList.add('active');
-      var desc = document.getElementById('view-desc');
+      const desc = document.getElementById('view-desc');
       if (tab === 'agenda') desc.innerText = 'Agenda y Citas';
       else if (tab === 'cobros') desc.innerText = 'Cobros y Clientes';
       else if (tab === 'pagos') desc.innerText = 'Cuentas por Pagar';
       else if (tab === 'inventario') desc.innerText = 'Inventarios y CPP';
-      else desc.innerText = 'Historias Clínicas';
+      else desc.innerText = 'Expedientes Clínicos';
     }
 
     function procesarArchivoImagen(inputElement, callback) {
-      var file = inputElement && inputElement.files ? inputElement.files[0] : null;
+      const file = inputElement && inputElement.files ? inputElement.files[0] : null;
       if (!file) return callback(null);
-      var reader = new FileReader();
+      const reader = new FileReader();
       reader.onload = function(e) {
-        var img = new Image();
+        const img = new Image();
         img.onload = function() {
-          var canvas = document.createElement('canvas');
-          var maxDim = 850;
-          var w = img.width, h = img.height;
+          const canvas = document.createElement('canvas');
+          const maxDim = 850;
+          let w = img.width, h = img.height;
           if (w > h && w > maxDim) { h = Math.round((h * maxDim) / w); w = maxDim; }
           else if (h > maxDim) { w = Math.round((w * maxDim) / h); h = maxDim; }
           canvas.width = w; canvas.height = h;
-          var ctx = canvas.getContext('2d');
+          const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, w, h);
           callback(canvas.toDataURL('image/jpeg', 0.72));
         };
-        img.onerror = function() { callback(null); };
+        img.onerror = () => callback(null);
         img.src = e.target.result;
       };
-      reader.onerror = function() { callback(null); };
+      reader.onerror = () => callback(null);
       reader.readAsDataURL(file);
     }
 
     function actualizarPanelAlertas() {
-      var alertas = [];
-      var hoy = new Date();
-      var limite72h = new Date(hoy.getTime() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const alertas = [];
+      const hoy = new Date();
+      const limite72h = new Date(hoy.getTime() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-      cacheAgenda.forEach(function(c) {
+      cacheAgenda.forEach(c => {
         if (!c.completada && c.fecha_evento) {
-          var fechaCita = c.fecha_evento.substring(0, 10);
+          const fechaCita = c.fecha_evento.substring(0, 10);
           if (fechaCita <= limite72h && fechaCita >= hoyStr) {
-            var hora = new Date(c.fecha_evento).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            var prefijo = (fechaCita === hoyStr) ? '📅 Cita hoy (' + hora + '): ' : '📅 Cita en 48-72h (' + fechaCita + ' ' + hora + '): ';
+            const hora = new Date(c.fecha_evento).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const prefijo = (fechaCita === hoyStr) ? '📅 Cita hoy (' + hora + '): ' : '📅 Cita en 48-72h (' + fechaCita + ' ' + hora + '): ';
             alertas.push({ texto: prefijo + '<b>' + c.titulo + '</b>', color: '#38bdf8' });
           }
         }
       });
 
-      cacheCobros.forEach(function(cli) {
-        var cargos = cli.cobros_cargos || [];
-        var abonos = cli.cobros_abonos || [];
-        var deuda = cargos.reduce((s, c) => s + (Number(c.monto) || 0), 0);
-        var pagado = abonos.reduce((s, a) => s + (Number(a.monto) || 0), 0);
-        var saldo = Math.max(0, deuda - pagado);
-
+      cacheCobros.forEach(cli => {
+        const cargos = cli.cobros_cargos || [];
+        const abonos = cli.cobros_abonos || [];
+        const deuda = cargos.reduce((s, c) => s + (Number(c.monto) || 0), 0);
+        const pagado = abonos.reduce((s, a) => s + (Number(a.monto) || 0), 0);
+        const saldo = Math.max(0, deuda - pagado);
         if (saldo > 0.01) {
-          var cargoVencePronto = cargos.find(c => c.fecha && c.fecha <= limite72h);
-          if (cargoVencePronto) {
-            var tagVenc = cargoVencePronto.fecha < hoyStr ? '⚠️ <span style="color:#ef4444; font-weight:800;">Vencido (' + cargoVencePronto.fecha + '):</span> ' : (cargoVencePronto.fecha === hoyStr ? '💵 <span style="color:#fbbf24; font-weight:800;">Vence hoy:</span> ' : '⏳ <span style="color:#38bdf8; font-weight:700;">Vence en 48-72h (' + cargoVencePronto.fecha + '):</span> ');
-            alertas.push({ texto: tagVenc + 'Cobro a <b>' + cli.nombre + '</b> ($' + saldo.toFixed(2) + ')', color: cargoVencePronto.fecha < hoyStr ? '#ef4444' : '#38bdf8' });
+          const v = cargos.find(c => c.fecha && c.fecha <= limite72h);
+          if (v) {
+            const tag = v.fecha < hoyStr ? '⚠️ <span style="color:#ef4444; font-weight:800;">Vencido (' + v.fecha + '):</span> ' : (v.fecha === hoyStr ? '💵 <span style="color:#fbbf24; font-weight:800;">Vence hoy:</span> ' : '⏳ <span style="color:#38bdf8; font-weight:700;">Vence en 48-72h (' + v.fecha + '):</span> ');
+            alertas.push({ texto: tag + 'Cobro a <b>' + cli.nombre + '</b> ($' + saldo.toFixed(2) + ')', color: v.fecha < hoyStr ? '#ef4444' : '#38bdf8' });
           }
         }
       });
 
-      cachePagos.forEach(function(p) {
-        var cargos = p.pagos_cargos || [];
-        var abonos = p.pagos_abonos || [];
-        var deuda = cargos.reduce((s, c) => s + (Number(c.monto) || 0), 0);
-        var pagado = abonos.reduce((s, a) => s + (Number(a.monto) || 0), 0);
-        var saldo = Math.max(0, deuda - pagado);
-
+      cachePagos.forEach(p => {
+        const cargos = p.pagos_cargos || [];
+        const abonos = p.pagos_abonos || [];
+        const deuda = cargos.reduce((s, c) => s + (Number(c.monto) || 0), 0);
+        const pagado = abonos.reduce((s, a) => s + (Number(a.monto) || 0), 0);
+        const saldo = Math.max(0, deuda - pagado);
         if (saldo > 0.01) {
-          var cargoVencePronto = cargos.find(c => c.fecha && c.fecha <= limite72h);
-          if (cargoVencePronto) {
-            var tagVenc = cargoVencePronto.fecha < hoyStr ? '⚠️ <span style="color:#ef4444; font-weight:800;">Pago atrasado (' + cargoVencePronto.fecha + '):</span> ' : (cargoVencePronto.fecha === hoyStr ? '⚠️ <span style="color:#f59e0b; font-weight:800;">Vence hoy:</span> ' : '⏳ <span style="color:#f59e0b; font-weight:700;">Vence en 48-72h (' + cargoVencePronto.fecha + '):</span> ');
-            alertas.push({ texto: tagVenc + 'Pago a <b>' + p.nombre + '</b> ($' + saldo.toFixed(2) + ')', color: '#f59e0b' });
+          const v = cargos.find(c => c.fecha && c.fecha <= limite72h);
+          if (v) {
+            const tag = v.fecha < hoyStr ? '⚠️ <span style="color:#ef4444; font-weight:800;">Pago atrasado (' + v.fecha + '):</span> ' : (v.fecha === hoyStr ? '⚠️ <span style="color:#f59e0b; font-weight:800;">Vence hoy:</span> ' : '⏳ <span style="color:#f59e0b; font-weight:700;">Vence en 48-72h (' + v.fecha + '):</span> ');
+            alertas.push({ texto: tag + 'Pago a <b>' + p.nombre + '</b> ($' + saldo.toFixed(2) + ')', color: '#f59e0b' });
           }
         }
       });
 
-      var panel = document.getElementById('panel-alertas');
-      var lista = document.getElementById('lista-alertas');
-      var contador = document.getElementById('contador-alertas');
-
+      const panel = document.getElementById('panel-alertas');
+      const lista = document.getElementById('lista-alertas');
+      const contador = document.getElementById('contador-alertas');
       if (!alertas.length) { panel.style.display = 'none'; return; }
       panel.style.display = 'block';
       contador.innerText = alertas.length;
@@ -685,14 +708,14 @@
     }
 
     async function guardarAgenda() {
-      var titulo = document.getElementById('agenda-titulo').value.trim();
-      var detalle = document.getElementById('agenda-detalle').value.trim();
-      var fecha = document.getElementById('agenda-fecha').value;
+      const titulo = document.getElementById('agenda-titulo').value.trim();
+      const detalle = document.getElementById('agenda-detalle').value.trim();
+      const fecha = document.getElementById('agenda-fecha').value;
       if (!titulo || !fecha) return alert('Cita y fecha obligatorias.');
 
       procesarArchivoImagen(document.getElementById('agenda-foto'), async function(fotoBase64) {
-        var isoFecha = new Date(fecha).toISOString();
-        var item = { id: 'loc_' + Date.now(), titulo: titulo, detalle: detalle, fecha_evento: isoFecha, completada: false, foto_url: fotoBase64 };
+        const isoFecha = new Date(fecha).toISOString();
+        const item = { id: 'loc_' + Date.now(), titulo, detalle, fecha_evento: isoFecha, completada: false, foto_url: fotoBase64 };
         cacheAgenda.push(item);
         guardarMemoriaLocal();
         dibujarAgenda();
@@ -700,11 +723,11 @@
         document.getElementById('agenda-titulo').value = '';
         document.getElementById('agenda-detalle').value = '';
         document.getElementById('agenda-fecha').value = '';
-        var fInput = document.getElementById('agenda-foto'); if (fInput) fInput.value = '';
+        const fInput = document.getElementById('agenda-foto'); if (fInput) fInput.value = '';
 
         if (navigator.onLine && db) {
           try {
-            const { data } = await db.from('agenda').insert({ titulo: titulo, detalle: detalle, fecha_evento: isoFecha, completada: false, foto_url: fotoBase64 }).select().single();
+            const { data } = await db.from('agenda').insert({ titulo, detalle, fecha_evento: isoFecha, completada: false, foto_url: fotoBase64 }).select().single();
             if (data) { item.id = data.id; guardarMemoriaLocal(); }
           } catch(e) {}
         }
@@ -712,32 +735,32 @@
     }
 
     function abrirModalEditarAgenda(id) {
-      var item = cacheAgenda.find(x => String(x.id) === String(id));
+      const item = cacheAgenda.find(x => String(x.id) === String(id));
       if (!item) return;
       document.getElementById('edit-agenda-id').value = id;
       document.getElementById('edit-agenda-titulo').value = item.titulo || '';
       document.getElementById('edit-agenda-detalle').value = item.detalle || '';
       if (item.fecha_evento) {
-        var d = new Date(item.fecha_evento);
+        const d = new Date(item.fecha_evento);
         if (!isNaN(d.getTime())) {
-          var pad = n => String(n).padStart(2, '0');
-          document.getElementById('edit-agenda-fecha').value = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+          const pad = n => String(n).padStart(2, '0');
+          document.getElementById('edit-agenda-fecha').value = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
         }
       }
-      var ef = document.getElementById('edit-agenda-foto'); if (ef) ef.value = '';
+      const ef = document.getElementById('edit-agenda-foto'); if (ef) ef.value = '';
       document.getElementById('modal-editar-agenda').classList.add('active');
     }
 
     async function confirmarEdicionAgenda() {
-      var id = document.getElementById('edit-agenda-id').value;
-      var titulo = document.getElementById('edit-agenda-titulo').value.trim();
-      var detalle = document.getElementById('edit-agenda-detalle').value.trim();
-      var fecha = document.getElementById('edit-agenda-fecha').value;
+      const id = document.getElementById('edit-agenda-id').value;
+      const titulo = document.getElementById('edit-agenda-titulo').value.trim();
+      const detalle = document.getElementById('edit-agenda-detalle').value.trim();
+      const fecha = document.getElementById('edit-agenda-fecha').value;
       if (!titulo || !fecha) return alert('Cita y fecha obligatorias.');
 
       procesarArchivoImagen(document.getElementById('edit-agenda-foto'), async function(fotoBase64) {
-        var item = cacheAgenda.find(x => String(x.id) === String(id));
-        var isoFecha = new Date(fecha).toISOString();
+        const item = cacheAgenda.find(x => String(x.id) === String(id));
+        const isoFecha = new Date(fecha).toISOString();
         if (item) {
           item.titulo = titulo; item.detalle = detalle; item.fecha_evento = isoFecha;
           if (fotoBase64) item.foto_url = fotoBase64;
@@ -746,7 +769,7 @@
         cerrarModal('modal-editar-agenda');
         if (navigator.onLine && db && !String(id).startsWith('loc_')) {
           try {
-            var payload = { titulo: titulo, detalle: detalle, fecha_evento: isoFecha };
+            const payload = { titulo, detalle, fecha_evento: isoFecha };
             if (fotoBase64) payload.foto_url = fotoBase64;
             await db.from('agenda').update(payload).eq('id', id);
           } catch(e) {}
@@ -755,7 +778,7 @@
     }
 
     async function toggleAgenda(id, estadoActual) {
-      var item = cacheAgenda.find(x => String(x.id) === String(id));
+      const item = cacheAgenda.find(x => String(x.id) === String(id));
       if (item) item.completada = !estadoActual;
       guardarMemoriaLocal(); dibujarAgenda();
       if (navigator.onLine && db && !String(id).startsWith('loc_')) {
@@ -774,34 +797,33 @@
 
     function renderAgenda() { dibujarAgenda(); }
     function dibujarAgenda() {
-      var lista = cacheAgenda.slice();
-      var q = (document.getElementById('buscar-agenda').value || '').toLowerCase().trim();
-      var filtroMes = document.getElementById('filtro-agenda').value;
+      let lista = cacheAgenda.slice();
+      const q = (document.getElementById('buscar-agenda').value || '').toLowerCase().trim();
+      const filtroMes = document.getElementById('filtro-agenda').value;
       if (q) lista = lista.filter(x => (x.titulo && x.titulo.toLowerCase().includes(q)) || (x.detalle && x.detalle.toLowerCase().includes(q)));
       if (filtroMes) lista = lista.filter(x => x.fecha_evento && x.fecha_evento.startsWith(filtroMes));
 
-      var cont = document.getElementById('lista-agenda');
+      const cont = document.getElementById('lista-agenda');
       if (!lista.length) { cont.innerHTML = '<p style="color:var(--text-muted); text-align:center; padding:20px;">No hay citas registradas.</p>'; return; }
 
-      var html = '';
-      for (var i = 0; i < lista.length; i++) {
-        var x = lista[i];
-        html += '<div class="card" style="margin-bottom: 12px; border-left: 5px solid var(--primary);">' +
-          '<div style="display:flex; justify-content:space-between; align-items:flex-start;">' +
-            '<div><div style="font-weight:700; font-size:1.02rem; ' + (x.completada ? 'text-decoration: line-through; opacity: 0.6;' : '') + '">' + x.titulo + '</div>' +
-            '<div style="font-size: 0.8rem; color: var(--accent); margin-top: 4px;">📅 ' + new Date(x.fecha_evento).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'}) + '</div></div>' +
-            '<span class="badge ' + (x.completada ? 'badge-done' : 'badge-pending') + '">' + (x.completada ? 'Lista' : 'Pendiente') + '</span>' +
-          '</div>' +
-          (x.detalle ? '<div style="font-size:0.82rem; color:#cbd5e1; background:var(--card-inner); padding:7px 10px; border-radius:6px; margin:8px 0;">📝 ' + x.detalle + '</div>' : '') +
-          (x.foto_url ? '<button class="thumb-btn" style="margin-top:6px;" onclick="abrirVisor(\'' + x.foto_url + '\')">📷 Ver Documento</button>' : '') +
-          '<div style="display:flex; justify-content: flex-end; gap: 8px; margin-top: 10px;">' +
-            '<button class="btn btn-secondary" onclick="abrirModalEditarAgenda(\'' + x.id + '\')">✏️ Editar</button>' +
-            '<button class="btn btn-secondary" onclick="toggleAgenda(\'' + x.id + '\', ' + x.completada + ')">' + (x.completada ? 'Reabrir' : 'Tachar') + '</button>' +
-            '<button class="btn btn-danger" onclick="borrarAgenda(\'' + x.id + '\')">✕ Anular</button>' +
-          '</div>' +
-        '</div>';
-      }
-      cont.innerHTML = html;
+      cont.innerHTML = lista.map(x => `
+        <div class="card" style="margin-bottom: 12px; border-left: 5px solid var(--primary);">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+            <div>
+              <div style="font-weight:700; font-size:1.02rem; ${x.completada ? 'text-decoration: line-through; opacity: 0.6;' : ''}">${x.titulo}</div>
+              <div style="font-size: 0.8rem; color: var(--accent); margin-top: 4px;">📅 ${new Date(x.fecha_evento).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'})}</div>
+            </div>
+            <span class="badge ${x.completada ? 'badge-done' : 'badge-pending'}">${x.completada ? 'Lista' : 'Pendiente'}</span>
+          </div>
+          ${x.detalle ? `<div style="font-size:0.82rem; color:#cbd5e1; background:var(--card-inner); padding:7px 10px; border-radius:6px; margin:8px 0;">📝 ${x.detalle}</div>` : ''}
+          ${x.foto_url ? `<button class="thumb-btn" style="margin-top:6px;" onclick="abrirVisor('${x.foto_url}')">📷 Ver Documento</button>` : ''}
+          <div style="display:flex; justify-content: flex-end; gap: 8px; margin-top: 10px;">
+            <button class="btn btn-secondary" onclick="abrirModalEditarAgenda('${x.id}')">✏️ Editar</button>
+            <button class="btn btn-secondary" onclick="toggleAgenda('${x.id}', ${x.completada})">${x.completada ? 'Reabrir' : 'Tachar'}</button>
+            <button class="btn btn-danger" onclick="borrarAgenda('${x.id}')">✕ Anular</button>
+          </div>
+        </div>
+      `).join('');
     }
 
     // 2. COBROS
@@ -816,19 +838,17 @@
     }
 
     async function guardarVenta() {
-      var nombre = document.getElementById('cobro-cliente').value.trim();
-      var tel = document.getElementById('cobro-telefono').value.trim();
-      var concepto = document.getElementById('cobro-concepto').value.trim() || 'Deuda Inicial';
-      var total = parseFloat(document.getElementById('cobro-total').value);
-      var fecha = document.getElementById('cobro-fecha').value || hoyStr;
+      const nombre = document.getElementById('cobro-cliente').value.trim();
+      const tel = document.getElementById('cobro-telefono').value.trim();
+      const concepto = document.getElementById('cobro-concepto').value.trim() || 'Deuda Inicial';
+      const total = parseFloat(document.getElementById('cobro-total').value);
+      const fecha = document.getElementById('cobro-fecha').value || hoyStr;
       if (!nombre || isNaN(total) || total <= 0) return alert('Ingresa nombre y monto válido.');
 
       procesarArchivoImagen(document.getElementById('cobro-foto'), async function(fotoBase64) {
-        var nuevoCli = {
-          id: 'loc_' + Date.now(),
-          nombre: nombre,
-          telefono: tel,
-          cobros_cargos: [{ id: 'loc_c_' + Date.now(), concepto: concepto, monto: total, fecha: fecha, foto_url: fotoBase64 }],
+        const nuevoCli = {
+          id: 'loc_' + Date.now(), nombre, telefono: tel,
+          cobros_cargos: [{ id: 'loc_c_' + Date.now(), concepto, monto: total, fecha, foto_url: fotoBase64 }],
           cobros_abonos: []
         };
         cacheCobros.unshift(nuevoCli);
@@ -840,14 +860,14 @@
         document.getElementById('cobro-telefono').value = '';
         document.getElementById('cobro-concepto').value = '';
         document.getElementById('cobro-total').value = '';
-        var fInput = document.getElementById('cobro-foto'); if (fInput) fInput.value = '';
+        const fInput = document.getElementById('cobro-foto'); if (fInput) fInput.value = '';
 
         if (navigator.onLine && db) {
           try {
-            const { data: c } = await db.from('clientes').insert({ nombre: nombre, telefono: tel }).select().single();
+            const { data: c } = await db.from('clientes').insert({ nombre, telefono: tel }).select().single();
             if (c) {
               nuevoCli.id = c.id;
-              const { data: cg } = await db.from('cobros_cargos').insert({ cliente_id: c.id, concepto: concepto, monto: total, fecha: fecha, foto_url: fotoBase64 }).select().single();
+              const { data: cg } = await db.from('cobros_cargos').insert({ cliente_id: c.id, concepto, monto: total, fecha, foto_url: fotoBase64 }).select().single();
               if (cg && nuevoCli.cobros_cargos[0]) nuevoCli.cobros_cargos[0].id = cg.id;
               guardarMemoriaLocal();
             }
@@ -857,29 +877,29 @@
     }
 
     function abrirModalAbono(id) {
-      var v = cacheCobros.find(x => String(x.id) === String(id));
+      const v = cacheCobros.find(x => String(x.id) === String(id));
       if (!v) return;
       document.getElementById('modal-venta-id').value = id;
       document.getElementById('modal-cliente-nombre').innerText = 'Cliente: ' + v.nombre;
       document.getElementById('abono-monto').value = '';
       document.getElementById('abono-tipo').value = '';
       document.getElementById('abono-nota').value = '';
-      var fInput = document.getElementById('abono-foto'); if (fInput) fInput.value = '';
+      const fInput = document.getElementById('abono-foto'); if (fInput) fInput.value = '';
       setHoy('abono-fecha');
       document.getElementById('modal-abono').classList.add('active');
     }
 
     async function confirmarAbono() {
-      var id = document.getElementById('modal-venta-id').value;
-      var monto = parseFloat(document.getElementById('abono-monto').value);
-      var fecha = document.getElementById('abono-fecha').value || hoyStr;
-      var tipo = document.getElementById('abono-tipo').value.trim() || 'Abono';
-      var nota = document.getElementById('abono-nota').value.trim();
+      const id = document.getElementById('modal-venta-id').value;
+      const monto = parseFloat(document.getElementById('abono-monto').value);
+      const fecha = document.getElementById('abono-fecha').value || hoyStr;
+      const tipo = document.getElementById('abono-tipo').value.trim() || 'Abono';
+      const nota = document.getElementById('abono-nota').value.trim();
       if (isNaN(monto) || monto <= 0) return alert('Ingresa un monto válido.');
 
       procesarArchivoImagen(document.getElementById('abono-foto'), async function(fotoBase64) {
-        var v = cacheCobros.find(x => String(x.id) === String(id));
-        var nuevoAbono = { id: 'loc_a_' + Date.now(), monto: monto, fecha: fecha, tipo: tipo, nota: nota, foto_url: fotoBase64 };
+        const v = cacheCobros.find(x => String(x.id) === String(id));
+        const nuevoAbono = { id: 'loc_a_' + Date.now(), monto, fecha, tipo, nota, foto_url: fotoBase64 };
         if (v) {
           if (!v.cobros_abonos) v.cobros_abonos = [];
           v.cobros_abonos.push(nuevoAbono);
@@ -890,7 +910,7 @@
 
         if (navigator.onLine && db && !String(id).startsWith('loc_')) {
           try {
-            const { data } = await db.from('cobros_abonos').insert({ cliente_id: id, monto: monto, fecha: fecha, tipo: tipo, nota: nota, foto_url: fotoBase64 }).select().single();
+            const { data } = await db.from('cobros_abonos').insert({ cliente_id: id, monto, fecha, tipo, nota, foto_url: fotoBase64 }).select().single();
             if (data) { nuevoAbono.id = data.id; guardarMemoriaLocal(); }
           } catch(e) {}
         }
@@ -898,27 +918,27 @@
     }
 
     function abrirModalCargo(id) {
-      var v = cacheCobros.find(x => String(x.id) === String(id));
+      const v = cacheCobros.find(x => String(x.id) === String(id));
       if (!v) return;
       document.getElementById('modal-cargo-id').value = id;
       document.getElementById('modal-cargo-cliente').innerText = 'Cliente: ' + v.nombre;
       document.getElementById('cargo-concepto').value = '';
       document.getElementById('cargo-monto').value = '';
-      var fInput = document.getElementById('cargo-foto'); if (fInput) fInput.value = '';
+      const fInput = document.getElementById('cargo-foto'); if (fInput) fInput.value = '';
       setHoy('cargo-fecha');
       document.getElementById('modal-cargo').classList.add('active');
     }
 
     async function confirmarCargo() {
-      var id = document.getElementById('modal-cargo-id').value;
-      var concepto = document.getElementById('cargo-concepto').value.trim() || 'Cargo adicional / Factura';
-      var monto = parseFloat(document.getElementById('cargo-monto').value);
-      var fecha = document.getElementById('cargo-fecha').value || hoyStr;
+      const id = document.getElementById('modal-cargo-id').value;
+      const concepto = document.getElementById('cargo-concepto').value.trim() || 'Factura / Cargo';
+      const monto = parseFloat(document.getElementById('cargo-monto').value);
+      const fecha = document.getElementById('cargo-fecha').value || hoyStr;
       if (isNaN(monto) || monto <= 0) return alert('Ingresa un monto válido.');
 
       procesarArchivoImagen(document.getElementById('cargo-foto'), async function(fotoBase64) {
-        var v = cacheCobros.find(x => String(x.id) === String(id));
-        var nuevoCargo = { id: 'loc_cg_' + Date.now(), concepto: concepto, monto: monto, fecha: fecha, foto_url: fotoBase64 };
+        const v = cacheCobros.find(x => String(x.id) === String(id));
+        const nuevoCargo = { id: 'loc_cg_' + Date.now(), concepto, monto, fecha, foto_url: fotoBase64 };
         if (v) {
           if (!v.cobros_cargos) v.cobros_cargos = [];
           v.cobros_cargos.push(nuevoCargo);
@@ -929,7 +949,7 @@
 
         if (navigator.onLine && db && !String(id).startsWith('loc_')) {
           try {
-            const { data } = await db.from('cobros_cargos').insert({ cliente_id: id, concepto: concepto, monto: monto, fecha: fecha, foto_url: fotoBase64 }).select().single();
+            const { data } = await db.from('cobros_cargos').insert({ cliente_id: id, concepto, monto, fecha, foto_url: fotoBase64 }).select().single();
             if (data) { nuevoCargo.id = data.id; guardarMemoriaLocal(); }
           } catch(e) {}
         }
@@ -965,89 +985,90 @@
 
     function renderCobros() { dibujarCobros(); }
     function dibujarCobros() {
-      var lista = cacheCobros.slice();
-      var q = (document.getElementById('buscar-cobros').value || '').toLowerCase().trim();
-      var filtroMes = document.getElementById('filtro-cobros').value;
+      let lista = cacheCobros.slice();
+      const q = (document.getElementById('buscar-cobros').value || '').toLowerCase().trim();
+      const filtroMes = document.getElementById('filtro-cobros').value;
 
       if (q) lista = lista.filter(v => (v.nombre && v.nombre.toLowerCase().includes(q)) || (v.telefono && v.telefono.includes(q)));
       if (filtroMes) lista = lista.filter(v => (v.cobros_cargos || []).some(c => c.fecha && c.fecha.startsWith(filtroMes)));
 
-      var cont = document.getElementById('lista-cobros');
+      const cont = document.getElementById('lista-cobros');
       if (!lista.length) { cont.innerHTML = '<p style="color:var(--text-muted); text-align:center; padding:20px;">No hay clientes registrados.</p>'; return; }
 
-      var totalGeneralCobrar = lista.reduce((acum, v) => {
-        var deuda = (v.cobros_cargos || []).reduce((s, c) => s + (Number(c.monto) || 0), 0);
-        var pagado = (v.cobros_abonos || []).reduce((s, a) => s + (Number(a.monto) || 0), 0);
-        return acum + Math.max(0, deuda - pagado);
+      const totalGeneral = lista.reduce((acum, v) => {
+        const d = (v.cobros_cargos || []).reduce((s, c) => s + (Number(c.monto) || 0), 0);
+        const a = (v.cobros_abonos || []).reduce((s, x) => s + (Number(x.monto) || 0), 0);
+        return acum + Math.max(0, d - a);
       }, 0);
 
-      var html = '<div style="background:rgba(56, 189, 248, 0.1); border:1px solid rgba(56, 189, 248, 0.35); border-radius:10px; padding:14px; margin-bottom:16px; text-align:center;">' +
-        '<span style="font-size:0.75rem; color:var(--matte-steel); text-transform:uppercase; font-weight:800; letter-spacing:0.05em;">TOTAL GENERAL POR COBRAR:</span>' +
-        '<div style="font-size:1.45rem; font-weight:800; color:var(--accent); margin-top:2px;">$' + totalGeneralCobrar.toFixed(2) + '</div>' +
-      '</div>';
+      let html = `
+        <div style="background:rgba(56, 189, 248, 0.1); border:1px solid rgba(56, 189, 248, 0.35); border-radius:10px; padding:14px; margin-bottom:16px; text-align:center;">
+          <span style="font-size:0.75rem; color:var(--matte-steel); text-transform:uppercase; font-weight:800; letter-spacing:0.05em;">TOTAL GENERAL POR COBRAR:</span>
+          <div style="font-size:1.45rem; font-weight:800; color:var(--accent); margin-top:2px;">$${totalGeneral.toFixed(2)}</div>
+        </div>
+      `;
 
-      for (var i = 0; i < lista.length; i++) {
-        var v = lista[i];
-        var cargos = v.cobros_cargos || [];
-        var abonos = v.cobros_abonos || [];
-        var totalDeuda = cargos.reduce((s, c) => s + (Number(c.monto) || 0), 0);
-        var totalAbonado = abonos.reduce((s, a) => s + (Number(a.monto) || 0), 0);
-        var saldo = Math.max(0, totalDeuda - totalAbonado);
-        var liquidado = saldo <= 0.001;
-        var estaAbierto = cobrosAbiertos.includes(String(v.id));
+      for (let v of lista) {
+        const cargos = v.cobros_cargos || [];
+        const abonos = v.cobros_abonos || [];
+        const totalDeuda = cargos.reduce((s, c) => s + (Number(c.monto) || 0), 0);
+        const totalAbonado = abonos.reduce((s, a) => s + (Number(a.monto) || 0), 0);
+        const saldo = Math.max(0, totalDeuda - totalAbonado);
+        const liquidado = saldo <= 0.001;
+        const abierto = cobrosAbiertos.includes(String(v.id));
 
-        html += '<div class="acc-card">' +
-          '<div class="acc-header" onclick="toggleCobro(\'' + v.id + '\')">' +
-            '<div>' +
-              '<div class="acc-title">' + v.nombre + '</div>' +
-              '<div class="acc-sub">' + (v.telefono ? '📞 ' + v.telefono : 'Cuenta') + ' • Saldo: <b style="color:' + (liquidado ? 'var(--success)' : 'var(--danger)') + '">$' + saldo.toFixed(2) + '</b></div>' +
-            '</div>' +
-            '<div style="display:flex; align-items:center; gap:8px;">' +
-              '<span class="badge ' + (liquidado ? 'badge-done' : 'badge-pending') + '">' + (liquidado ? 'Al Día' : 'Deuda') + '</span>' +
-              '<span style="font-size:0.8rem; color:var(--text-muted);">' + (estaAbierto ? '▲' : '▼') + '</span>' +
-            '</div>' +
-          '</div>' +
-          '<div class="acc-body ' + (estaAbierto ? 'open' : '') + '">' +
-            '<div class="saldo-box">' +
-              '<div><span>Deuda</span><strong>$' + totalDeuda.toFixed(2) + '</strong></div>' +
-              '<div><span>Abonado</span><strong style="color:var(--success);">$' + totalAbonado.toFixed(2) + '</strong></div>' +
-              '<div><span>Saldo</span><strong class="' + (liquidado ? 'saldo-cero' : 'saldo-pendiente') + '">$' + saldo.toFixed(2) + '</strong></div>' +
-            '</div>' +
-            '<div class="ledger-section">' +
-              '<div class="ledger-title"><span>Trámites / Facturas:</span><button class="btn btn-secondary" style="padding: 2px 8px; font-size:0.75rem;" onclick="abrirModalCargo(\'' + v.id + '\')">+ Factura / Cargo</button></div>';
-
-        for (var cIdx = 0; cIdx < cargos.length; cIdx++) {
-          var c = cargos[cIdx];
-          html += '<div class="ledger-item">' +
-            '<div class="det"><b>' + c.concepto + '</b><span style="font-size:0.7rem; color:var(--text-muted);">Vence: ' + (c.fecha || '-') + '</span>' +
-            (c.foto_url ? '<button class="thumb-btn" onclick="abrirVisor(\'' + c.foto_url + '\')">🧾 Ver Factura</button>' : '') +
-            '</div>' +
-            '<div class="actions"><b style="color:#fff;">$' + Number(c.monto).toFixed(2) + '</b><button class="btn-del-mini" title="Anular cargo" onclick="borrarCargo(\'' + c.id + '\')">✕</button></div>' +
-          '</div>';
-        }
-
-        html += '</div><div class="ledger-section">' +
-          '<div class="ledger-title"><span>Abonos Recibidos:</span>' +
-            (!liquidado ? '<button class="btn btn-success" style="padding: 2px 8px; font-size:0.75rem;" onclick="abrirModalAbono(\'' + v.id + '\')">+ Abonar</button>' : '') +
-          '</div>';
-
-        for (var aIdx = 0; aIdx < abonos.length; aIdx++) {
-          var a = abonos[aIdx];
-          html += '<div class="ledger-item">' +
-            '<div class="det">' +
-              '<span>• ' + (a.fecha || hoyStr) + ' (' + (a.tipo || 'Abono') + ')</span>' +
-              (a.nota ? '<span style="font-size:0.7rem; color:#94a3b8;">💬 ' + a.nota + '</span>' : '') +
-              (a.foto_url ? '<button class="thumb-btn" onclick="abrirVisor(\'' + a.foto_url + '\')">🧾 Ver Recibo</button>' : '') +
-            '</div>' +
-            '<div class="actions"><b style="color:var(--success);">+$' + Number(a.monto).toFixed(2) + '</b><button class="btn-del-mini" title="Anular abono" onclick="borrarAbono(\'' + a.id + '\')">✕</button></div>' +
-          '</div>';
-        }
-
-        html += '</div>' +
-          '<div style="display:flex; justify-content: flex-end; margin-top: 14px;">' +
-            '<button class="btn btn-danger" onclick="borrarCliente(\'' + v.id + '\')">✕ Eliminar Cuenta Completa</button>' +
-          '</div>' +
-        '</div></div>';
+        html += `
+          <div class="acc-card">
+            <div class="acc-header" onclick="toggleCobro('${v.id}')">
+              <div>
+                <div class="acc-title">${v.nombre}</div>
+                <div class="acc-sub">${v.telefono ? '📞 ' + v.telefono : 'Cuenta'} • Saldo: <b style="color:${liquidado ? 'var(--success)' : 'var(--danger)'}">$${saldo.toFixed(2)}</b></div>
+              </div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span class="badge ${liquidado ? 'badge-done' : 'badge-pending'}">${liquidado ? 'Al Día' : 'Deuda'}</span>
+                <span style="font-size:0.8rem; color:var(--text-muted);">${abierto ? '▲' : '▼'}</span>
+              </div>
+            </div>
+            <div class="acc-body ${abierto ? 'open' : ''}">
+              <div class="saldo-box">
+                <div><span>Deuda</span><strong>$${totalDeuda.toFixed(2)}</strong></div>
+                <div><span>Abonado</span><strong style="color:var(--success);">$${totalAbonado.toFixed(2)}</strong></div>
+                <div><span>Saldo</span><strong class="${liquidado ? 'saldo-cero' : 'saldo-pendiente'}">$${saldo.toFixed(2)}</strong></div>
+              </div>
+              <div class="ledger-section">
+                <div class="ledger-title"><span>Trámites / Facturas:</span><button class="btn btn-secondary" style="padding: 2px 8px; font-size:0.75rem;" onclick="abrirModalCargo('${v.id}')">+ Factura / Cargo</button></div>
+                ${cargos.map(c => `
+                  <div class="ledger-item">
+                    <div class="det">
+                      <b>${c.concepto}</b><span style="font-size:0.7rem; color:var(--text-muted);">Vence: ${c.fecha || '-'}</span>
+                      ${c.foto_url ? `<button class="thumb-btn" onclick="abrirVisor('${c.foto_url}')">🧾 Ver Factura</button>` : ''}
+                    </div>
+                    <div class="actions"><b style="color:#fff;">$${Number(c.monto).toFixed(2)}</b><button class="btn-del-mini" title="Anular cargo" onclick="borrarCargo('${c.id}')">✕</button></div>
+                  </div>
+                `).join('')}
+              </div>
+              <div class="ledger-section">
+                <div class="ledger-title">
+                  <span>Abonos Recibidos:</span>
+                  ${!liquidado ? `<button class="btn btn-success" style="padding: 2px 8px; font-size:0.75rem;" onclick="abrirModalAbono('${v.id}')">+ Abonar</button>` : ''}
+                </div>
+                ${abonos.map(a => `
+                  <div class="ledger-item">
+                    <div class="det">
+                      <span>• ${a.fecha || hoyStr} (${a.tipo || 'Abono'})</span>
+                      ${a.nota ? `<span style="font-size:0.7rem; color:#94a3b8;">💬 ${a.nota}</span>` : ''}
+                      ${a.foto_url ? `<button class="thumb-btn" onclick="abrirVisor('${a.foto_url}')">🧾 Ver Recibo</button>` : ''}
+                    </div>
+                    <div class="actions"><b style="color:var(--success);">+$${Number(a.monto).toFixed(2)}</b><button class="btn-del-mini" title="Anular abono" onclick="borrarAbono('${a.id}')">✕</button></div>
+                  </div>
+                `).join('')}
+              </div>
+              <div style="display:flex; justify-content: flex-end; margin-top: 14px;">
+                <button class="btn btn-danger" onclick="borrarCliente('${v.id}')">✕ Eliminar Cuenta Completa</button>
+              </div>
+            </div>
+          </div>
+        `;
       }
       cont.innerHTML = html;
     }
@@ -1064,18 +1085,16 @@
     }
 
     async function guardarCuentaPorPagar() {
-      var nombre = document.getElementById('pago-concepto').value.trim();
-      var detalle = document.getElementById('pago-detalle').value.trim() || 'Deuda Inicial';
-      var monto = parseFloat(document.getElementById('pago-monto').value);
-      var fecha = document.getElementById('pago-fecha').value || hoyStr;
+      const nombre = document.getElementById('pago-concepto').value.trim();
+      const detalle = document.getElementById('pago-detalle').value.trim() || 'Deuda Inicial';
+      const monto = parseFloat(document.getElementById('pago-monto').value);
+      const fecha = document.getElementById('pago-fecha').value || hoyStr;
       if (!nombre || isNaN(monto) || monto <= 0) return alert('Ingresa acreedor y monto válido.');
 
       procesarArchivoImagen(document.getElementById('pago-foto'), async function(fotoBase64) {
-        var nuevoAcreedor = {
-          id: 'loc_p_' + Date.now(),
-          nombre: nombre,
-          detalle: detalle,
-          pagos_cargos: [{ id: 'loc_pc_' + Date.now(), concepto: detalle, monto: monto, fecha: fecha, foto_url: fotoBase64 }],
+        const nuevoAcreedor = {
+          id: 'loc_p_' + Date.now(), nombre, detalle,
+          pagos_cargos: [{ id: 'loc_pc_' + Date.now(), concepto: detalle, monto, fecha, foto_url: fotoBase64 }],
           pagos_abonos: []
         };
         cachePagos.unshift(nuevoAcreedor);
@@ -1086,14 +1105,14 @@
         document.getElementById('pago-concepto').value = '';
         document.getElementById('pago-detalle').value = '';
         document.getElementById('pago-monto').value = '';
-        var pf = document.getElementById('pago-foto'); if (pf) pf.value = '';
+        const pf = document.getElementById('pago-foto'); if (pf) pf.value = '';
 
         if (navigator.onLine && db) {
           try {
-            const { data: a } = await db.from('acreedores').insert({ nombre: nombre, detalle: detalle }).select().single();
+            const { data: a } = await db.from('acreedores').insert({ nombre, detalle }).select().single();
             if (a) {
               nuevoAcreedor.id = a.id;
-              const { data: pc } = await db.from('pagos_cargos').insert({ acreedor_id: a.id, concepto: detalle, monto: monto, fecha: fecha, foto_url: fotoBase64 }).select().single();
+              const { data: pc } = await db.from('pagos_cargos').insert({ acreedor_id: a.id, concepto: detalle, monto, fecha, foto_url: fotoBase64 }).select().single();
               if (pc && nuevoAcreedor.pagos_cargos[0]) nuevoAcreedor.pagos_cargos[0].id = pc.id;
               guardarMemoriaLocal();
             }
@@ -1103,27 +1122,27 @@
     }
 
     function abrirModalCargoPagar(id) {
-      var p = cachePagos.find(x => String(x.id) === String(id));
+      const p = cachePagos.find(x => String(x.id) === String(id));
       if (!p) return;
       document.getElementById('modal-cargo-pagar-id').value = id;
       document.getElementById('modal-cargo-pagar-nombre').innerText = 'Acreedor: ' + p.nombre;
       document.getElementById('cargo-pagar-concepto').value = '';
       document.getElementById('cargo-pagar-monto').value = '';
-      var fInput = document.getElementById('cargo-pagar-foto'); if (fInput) fInput.value = '';
+      const fInput = document.getElementById('cargo-pagar-foto'); if (fInput) fInput.value = '';
       setHoy('cargo-pagar-fecha');
       document.getElementById('modal-cargo-pagar').classList.add('active');
     }
 
     async function confirmarCargoPagar() {
-      var id = document.getElementById('modal-cargo-pagar-id').value;
-      var concepto = document.getElementById('cargo-pagar-concepto').value.trim() || 'Factura Recibida';
-      var monto = parseFloat(document.getElementById('cargo-pagar-monto').value);
-      var fecha = document.getElementById('cargo-pagar-fecha').value || hoyStr;
+      const id = document.getElementById('modal-cargo-pagar-id').value;
+      const concepto = document.getElementById('cargo-pagar-concepto').value.trim() || 'Factura Recibida';
+      const monto = parseFloat(document.getElementById('cargo-pagar-monto').value);
+      const fecha = document.getElementById('cargo-pagar-fecha').value || hoyStr;
       if (isNaN(monto) || monto <= 0) return alert('Ingresa un monto válido.');
 
       procesarArchivoImagen(document.getElementById('cargo-pagar-foto'), async function(fotoBase64) {
-        var p = cachePagos.find(x => String(x.id) === String(id));
-        var nuevoCargo = { id: 'loc_pc_' + Date.now(), concepto: concepto, monto: monto, fecha: fecha, foto_url: fotoBase64 };
+        const p = cachePagos.find(x => String(x.id) === String(id));
+        const nuevoCargo = { id: 'loc_pc_' + Date.now(), concepto, monto, fecha, foto_url: fotoBase64 };
         if (p) {
           if (!p.pagos_cargos) p.pagos_cargos = [];
           p.pagos_cargos.push(nuevoCargo);
@@ -1134,7 +1153,7 @@
 
         if (navigator.onLine && db && !String(id).startsWith('loc_')) {
           try {
-            const { data } = await db.from('pagos_cargos').insert({ acreedor_id: id, concepto: concepto, monto: monto, fecha: fecha, foto_url: fotoBase64 }).select().single();
+            const { data } = await db.from('pagos_cargos').insert({ acreedor_id: id, concepto, monto, fecha, foto_url: fotoBase64 }).select().single();
             if (data) { nuevoCargo.id = data.id; guardarMemoriaLocal(); }
           } catch(e) {}
         }
@@ -1142,29 +1161,29 @@
     }
 
     function abrirModalPagoCuota(id) {
-      var p = cachePagos.find(x => String(x.id) === String(id));
+      const p = cachePagos.find(x => String(x.id) === String(id));
       if (!p) return;
       document.getElementById('modal-pago-id').value = id;
       document.getElementById('modal-pago-nombre').innerText = 'Acreedor: ' + p.nombre;
       document.getElementById('cuota-monto').value = '';
       document.getElementById('cuota-tipo').value = '';
       document.getElementById('cuota-nota').value = '';
-      var fInput = document.getElementById('cuota-foto'); if (fInput) fInput.value = '';
+      const fInput = document.getElementById('cuota-foto'); if (fInput) fInput.value = '';
       setHoy('cuota-fecha');
       document.getElementById('modal-pago-cuota').classList.add('active');
     }
 
     async function confirmarPagoCuota() {
-      var id = document.getElementById('modal-pago-id').value;
-      var monto = parseFloat(document.getElementById('cuota-monto').value);
-      var fecha = document.getElementById('cuota-fecha').value || hoyStr;
-      var tipo = document.getElementById('cuota-tipo').value.trim() || 'Pago';
-      var nota = document.getElementById('cuota-nota').value.trim();
+      const id = document.getElementById('modal-pago-id').value;
+      const monto = parseFloat(document.getElementById('cuota-monto').value);
+      const fecha = document.getElementById('cuota-fecha').value || hoyStr;
+      const tipo = document.getElementById('cuota-tipo').value.trim() || 'Pago';
+      const nota = document.getElementById('cuota-nota').value.trim();
       if (isNaN(monto) || monto <= 0) return alert('Ingresa un monto válido.');
 
       procesarArchivoImagen(document.getElementById('cuota-foto'), async function(fotoBase64) {
-        var p = cachePagos.find(x => String(x.id) === String(id));
-        var nuevoAbono = { id: 'loc_pa_' + Date.now(), monto: monto, fecha: fecha, tipo: tipo, nota: nota, foto_url: fotoBase64 };
+        const p = cachePagos.find(x => String(x.id) === String(id));
+        const nuevoAbono = { id: 'loc_pa_' + Date.now(), monto, fecha, tipo, nota, foto_url: fotoBase64 };
         if (p) {
           if (!p.pagos_abonos) p.pagos_abonos = [];
           p.pagos_abonos.push(nuevoAbono);
@@ -1175,7 +1194,7 @@
 
         if (navigator.onLine && db && !String(id).startsWith('loc_')) {
           try {
-            const { data } = await db.from('pagos_abonos').insert({ acreedor_id: id, monto: monto, fecha: fecha, tipo: tipo, nota: nota, foto_url: fotoBase64 }).select().single();
+            const { data } = await db.from('pagos_abonos').insert({ acreedor_id: id, monto, fecha, tipo, nota, foto_url: fotoBase64 }).select().single();
             if (data) { nuevoAbono.id = data.id; guardarMemoriaLocal(); }
           } catch(e) {}
         }
@@ -1211,94 +1230,93 @@
 
     function renderPagos() { dibujarPagos(); }
     function dibujarPagos() {
-      var lista = cachePagos.slice();
-      var q = (document.getElementById('buscar-pagos').value || '').toLowerCase().trim();
-      var filtroMes = document.getElementById('filtro-pagos').value;
+      let lista = cachePagos.slice();
+      const q = (document.getElementById('buscar-pagos').value || '').toLowerCase().trim();
+      const filtroMes = document.getElementById('filtro-pagos').value;
 
       if (q) lista = lista.filter(p => (p.nombre && p.nombre.toLowerCase().includes(q)));
       if (filtroMes) lista = lista.filter(p => (p.pagos_cargos || []).some(c => c.fecha && c.fecha.startsWith(filtroMes)));
 
-      var cont = document.getElementById('lista-pagos');
+      const cont = document.getElementById('lista-pagos');
       if (!lista.length) { cont.innerHTML = '<p style="color:var(--text-muted); text-align:center; padding:20px;">No hay cuentas registradas.</p>'; return; }
 
-      var totalGeneralPagar = lista.reduce((acum, p) => {
-        var deuda = (p.pagos_cargos || []).reduce((s, c) => s + (Number(c.monto) || 0), 0);
-        var pagado = (p.pagos_abonos || []).reduce((s, a) => s + (Number(a.monto) || 0), 0);
-        return acum + Math.max(0, deuda - pagado);
+      const totalGeneral = lista.reduce((acum, p) => {
+        const d = (p.pagos_cargos || []).reduce((s, c) => s + (Number(c.monto) || 0), 0);
+        const a = (p.pagos_abonos || []).reduce((s, x) => s + (Number(x.monto) || 0), 0);
+        return acum + Math.max(0, d - a);
       }, 0);
 
-      var html = '<div style="background:rgba(239, 68, 68, 0.1); border:1px solid rgba(239, 68, 68, 0.35); border-radius:10px; padding:14px; margin-bottom:16px; text-align:center;">' +
-        '<span style="font-size:0.75rem; color:var(--matte-steel); text-transform:uppercase; font-weight:800; letter-spacing:0.05em;">TOTAL GENERAL POR PAGAR:</span>' +
-        '<div style="font-size:1.45rem; font-weight:800; color:#f87171; margin-top:2px;">$' + totalGeneralPagar.toFixed(2) + '</div>' +
-      '</div>';
+      let html = `
+        <div style="background:rgba(239, 68, 68, 0.1); border:1px solid rgba(239, 68, 68, 0.35); border-radius:10px; padding:14px; margin-bottom:16px; text-align:center;">
+          <span style="font-size:0.75rem; color:var(--matte-steel); text-transform:uppercase; font-weight:800; letter-spacing:0.05em;">TOTAL GENERAL POR PAGAR:</span>
+          <div style="font-size:1.45rem; font-weight:800; color:#f87171; margin-top:2px;">$${totalGeneral.toFixed(2)}</div>
+        </div>
+      `;
 
-      for (var i = 0; i < lista.length; i++) {
-        var p = lista[i];
-        var cargos = p.pagos_cargos || [];
-        var abonos = p.pagos_abonos || [];
-        var totalDeuda = cargos.reduce((s, c) => s + (Number(c.monto) || 0), 0);
-        var totalPagado = abonos.reduce((s, a) => s + (Number(a.monto) || 0), 0);
-        var saldo = Math.max(0, totalDeuda - totalPagado);
-        var cancelado = saldo <= 0.001;
-        var estaAbierto = pagosAbiertos.includes(String(p.id));
+      for (let p of lista) {
+        const cargos = p.pagos_cargos || [];
+        const abonos = p.pagos_abonos || [];
+        const totalDeuda = cargos.reduce((s, c) => s + (Number(c.monto) || 0), 0);
+        const totalPagado = abonos.reduce((s, a) => s + (Number(a.monto) || 0), 0);
+        const saldo = Math.max(0, totalDeuda - totalPagado);
+        const cancelado = saldo <= 0.001;
+        const abierto = pagosAbiertos.includes(String(p.id));
 
-        html += '<div class="acc-card card-pago">' +
-          '<div class="acc-header" onclick="togglePago(\'' + p.id + '\')">' +
-            '<div>' +
-              '<div class="acc-title">' + p.nombre + '</div>' +
-              '<div class="acc-sub">' + (p.detalle || 'Registrado') + ' • Saldo: <b style="color:' + (cancelado ? 'var(--success)' : 'var(--danger)') + '">$' + saldo.toFixed(2) + '</b></div>' +
-            '</div>' +
-            '<div style="display:flex; align-items:center; gap:8px;">' +
-              '<span class="badge ' + (cancelado ? 'badge-done' : 'badge-pending') + '">' + (cancelado ? 'Cancelado' : 'Por Pagar') + '</span>' +
-              '<span style="font-size:0.8rem; color:var(--text-muted);">' + (estaAbierto ? '▲' : '▼') + '</span>' +
-            '</div>' +
-          '</div>' +
-          '<div class="acc-body ' + (estaAbierto ? 'open' : '') + '">' +
-            '<div class="saldo-box">' +
-              '<div><span>Deuda</span><strong>$' + totalDeuda.toFixed(2) + '</strong></div>' +
-              '<div><span>Pagado</span><strong style="color:var(--success);">$' + totalPagado.toFixed(2) + '</strong></div>' +
-              '<div><span>Saldo</span><strong class="' + (cancelado ? 'saldo-cero' : 'saldo-pendiente') + '">$' + saldo.toFixed(2) + '</strong></div>' +
-            '</div>' +
-            '<div class="ledger-section">' +
-              '<div class="ledger-title"><span>Obligaciones / Facturas:</span><button class="btn btn-secondary" style="padding: 2px 8px; font-size:0.75rem;" onclick="abrirModalCargoPagar(\'' + p.id + '\')">+ Factura</button></div>';
-
-        for (var cIdx = 0; cIdx < cargos.length; cIdx++) {
-          var c = cargos[cIdx];
-          html += '<div class="ledger-item">' +
-            '<div class="det"><b>' + c.concepto + '</b><span style="font-size:0.7rem; color:var(--text-muted);">Vence: ' + (c.fecha || '-') + '</span>' +
-            (c.foto_url ? '<button class="thumb-btn" onclick="abrirVisor(\'' + c.foto_url + '\')">🧾 Ver Factura</button>' : '') +
-            '</div>' +
-            '<div class="actions"><b style="color:#fff;">$' + Number(c.monto).toFixed(2) + '</b><button class="btn-del-mini" title="Anular obligación" onclick="borrarCargoPagar(\'' + c.id + '\')">✕</button></div>' +
-          '</div>';
-        }
-
-        html += '</div><div class="ledger-section">' +
-          '<div class="ledger-title"><span>Pagos Realizados:</span>' +
-            (!cancelado ? '<button class="btn btn-success" style="padding: 2px 8px; font-size:0.75rem;" onclick="abrirModalPagoCuota(\'' + p.id + '\')">+ Pagar</button>' : '') +
-          '</div>';
-
-        for (var aIdx = 0; aIdx < abonos.length; aIdx++) {
-          var a = abonos[aIdx];
-          html += '<div class="ledger-item">' +
-            '<div class="det">' +
-              '<span>• ' + (a.fecha || hoyStr) + ' (' + (a.tipo || 'Pago') + ')</span>' +
-              (a.nota ? '<span style="font-size:0.7rem; color:#94a3b8;">💬 ' + a.nota + '</span>' : '') +
-              (a.foto_url ? '<button class="thumb-btn" onclick="abrirVisor(\'' + a.foto_url + '\')">🧾 Ver Recibo</button>' : '') +
-            '</div>' +
-            '<div class="actions"><b style="color:var(--success);">-$' + Number(a.monto).toFixed(2) + '</b><button class="btn-del-mini" title="Anular pago" onclick="borrarAbonoPagar(\'' + a.id + '\')">✕</button></div>' +
-          '</div>';
-        }
-
-        html += '</div>' +
-          '<div style="display:flex; justify-content: flex-end; margin-top: 14px;">' +
-            '<button class="btn btn-danger" onclick="borrarAcreedor(\'' + p.id + '\')">✕ Eliminar Cuenta Completa</button>' +
-          '</div>' +
-        '</div></div>';
+        html += `
+          <div class="acc-card card-pago">
+            <div class="acc-header" onclick="togglePago('${p.id}')">
+              <div>
+                <div class="acc-title">${p.nombre}</div>
+                <div class="acc-sub">${p.detalle || 'Registrado'} • Saldo: <b style="color:${cancelado ? 'var(--success)' : 'var(--danger)'}">$${saldo.toFixed(2)}</b></div>
+              </div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span class="badge ${cancelado ? 'badge-done' : 'badge-pending'}">${cancelado ? 'Cancelado' : 'Por Pagar'}</span>
+                <span style="font-size:0.8rem; color:var(--text-muted);">${abierto ? '▲' : '▼'}</span>
+              </div>
+            </div>
+            <div class="acc-body ${abierto ? 'open' : ''}">
+              <div class="saldo-box">
+                <div><span>Deuda</span><strong>$${totalDeuda.toFixed(2)}</strong></div>
+                <div><span>Pagado</span><strong style="color:var(--success);">$${totalPagado.toFixed(2)}</strong></div>
+                <div><span>Saldo</span><strong class="${cancelado ? 'saldo-cero' : 'saldo-pendiente'}">$${saldo.toFixed(2)}</strong></div>
+              </div>
+              <div class="ledger-section">
+                <div class="ledger-title"><span>Obligaciones / Facturas:</span><button class="btn btn-secondary" style="padding: 2px 8px; font-size:0.75rem;" onclick="abrirModalCargoPagar('${p.id}')">+ Factura</button></div>
+                ${cargos.map(c => `
+                  <div class="ledger-item">
+                    <div class="det">
+                      <b>${c.concepto}</b><span style="font-size:0.7rem; color:var(--text-muted);">Vence: ${c.fecha \vert{}\vert{} '-'}</span>${c.foto_url ? `<button class="thumb-btn" onclick="abrirVisor('${c.foto_url}')">🧾 Ver Factura</button>` : ''}
+                    </div>
+                    <div class="actions"><b style="color:#fff;">$${Number(c.monto).toFixed(2)}</b><button class="btn-del-mini" title="Anular obligación" onclick="borrarCargoPagar('${c.id}')">✕</button></div>
+                  </div>
+                `).join('')}
+              </div>
+              <div class="ledger-section">
+                <div class="ledger-title">
+                  <span>Pagos Realizados:</span>
+                  ${!cancelado ? `<button class="btn btn-success" style="padding: 2px 8px; font-size:0.75rem;" onclick="abrirModalPagoCuota('${p.id}')">+ Pagar</button>` : ''}
+                </div>
+                ${abonos.map(a => `
+                  <div class="ledger-item">
+                    <div class="det">
+                      <span>• ${a.fecha || hoyStr} (${a.tipo \vert{}\vert{} 'Pago'})</span>${a.nota ? `<span style="font-size:0.7rem; color:#94a3b8;">💬 ${a.nota}</span>` : ''}
+                      ${a.foto_url ? `<button class="thumb-btn" onclick="abrirVisor('${a.foto_url}')">🧾 Ver Recibo</button>` : ''}
+                    </div>
+                    <div class="actions"><b style="color:var(--success);">-$${Number(a.monto).toFixed(2)}</b><button class="btn-del-mini" title="Anular pago" onclick="borrarAbonoPagar('${a.id}')">✕</button></div>
+                  </div>
+                `).join('')}
+              </div>
+              <div style="display:flex; justify-content: flex-end; margin-top: 14px;">
+                <button class="btn btn-danger" onclick="borrarAcreedor('${p.id}')">✕ Eliminar Cuenta Completa</button>
+              </div>
+            </div>
+          </div>
+        `;
       }
       cont.innerHTML = html;
     }
 
-    // 4. INVENTARIO (CPP Y PRECIOS DINÁMICOS)
+    // 4. INVENTARIO (CPP PONDERADO Y PRECIOS DINÁMICOS)
     async function cargarInventario() {
       dibujarInventario();
       if (navigator.onLine && db) {
@@ -1310,36 +1328,24 @@
     }
 
     async function guardarProductoInventario() {
-      var cod = document.getElementById('inv-codigo').value.trim();
-      var nom = document.getElementById('inv-nombre').value.trim();
-      var stk = parseFloat(document.getElementById('inv-stock').value) || 0;
-      var cto = parseFloat(document.getElementById('inv-costo').value) || 0;
+      const cod = document.getElementById('inv-codigo').value.trim();
+      const nom = document.getElementById('inv-nombre').value.trim();
+      const stk = parseFloat(document.getElementById('inv-stock').value) || 0;
+      const cto = parseFloat(document.getElementById('inv-costo').value) || 0;
       if (!cod || !nom || cto <= 0) return alert('Código, nombre y costo unitario son obligatorios.');
 
-      var pMayor = Number((cto * 1.15).toFixed(2));
-      var pUnidad = Number((cto * 1.35).toFixed(2));
+      const pMayor = Number((cto * 1.15).toFixed(2));
+      const pUnidad = Number((cto * 1.35).toFixed(2));
 
       procesarArchivoImagen(document.getElementById('inv-foto'), async function(fotoBase64) {
-        var nuevoProd = {
+        const nuevoProd = {
           id: 'loc_inv_' + Date.now(),
-          codigo: cod,
-          nombre: nom,
-          stock: stk,
-          costo_promedio: cto,
-          ultimo_costo: cto,
-          precio_mayor: pMayor,
-          precio_unidad: pUnidad,
-          foto_url: fotoBase64,
+          codigo: cod, nombre: nom, stock: stk, costo_promedio: cto, ultimo_costo: cto,
+          precio_mayor: pMayor, precio_unidad: pUnidad, foto_url: fotoBase64,
           inventario_movimientos: [{
-            id: 'loc_mov_' + Date.now(),
-            tipo: 'compra',
-            cantidad: stk,
-            precio_unitario: cto,
-            tipo_precio: 'inicial',
-            total: stk * cto,
-            fecha: hoyStr,
-            detalle: 'Inventario inicial',
-            foto_url: fotoBase64
+            id: 'loc_mov_' + Date.now(), tipo: 'compra', cantidad: stk, precio_unitario: cto,
+            tipo_precio: 'inicial', total: Number((stk * cto).toFixed(2)), fecha: hoyStr,
+            detalle: 'Inventario inicial', foto_url: fotoBase64
           }]
         };
         cacheInv.unshift(nuevoProd);
@@ -1351,19 +1357,19 @@
         document.getElementById('inv-nombre').value = '';
         document.getElementById('inv-stock').value = '';
         document.getElementById('inv-costo').value = '';
-        var fInput = document.getElementById('inv-foto'); if (fInput) fInput.value = '';
+        const fInput = document.getElementById('inv-foto'); if (fInput) fInput.value = '';
 
         if (navigator.onLine && db) {
           try {
             const { data: p } = await db.from('inventario_productos').insert({
-              codigo: cod, nombre: nom, stock: stk, costo_promedio: cto,
-              ultimo_costo: cto, precio_mayor: pMayor, precio_unidad: pUnidad, foto_url: fotoBase64
+              codigo: cod, nombre: nom, stock: stk, costo_promedio: cto, ultimo_costo: cto,
+              precio_mayor: pMayor, precio_unidad: pUnidad, foto_url: fotoBase64
             }).select().single();
             if (p) {
               nuevoProd.id = p.id;
               await db.from('inventario_movimientos').insert({
                 producto_id: p.id, tipo: 'compra', cantidad: stk, precio_unitario: cto,
-                tipo_precio: 'inicial', total: stk * cto, fecha: hoyStr, detalle: 'Inventario inicial', foto_url: fotoBase64
+                tipo_precio: 'inicial', total: (stk * cto), fecha: hoyStr, detalle: 'Inventario inicial', foto_url: fotoBase64
               });
               guardarMemoriaLocal();
             }
@@ -1373,31 +1379,31 @@
     }
 
     function abrirModalCompraInv(id) {
-      var prod = cacheInv.find(x => String(x.id) === String(id));
+      const prod = cacheInv.find(x => String(x.id) === String(id));
       if (!prod) return;
       document.getElementById('modal-inv-compra-id').value = id;
-      document.getElementById('modal-inv-compra-prod').innerText = prod.codigo + ' - ' + prod.nombre + ' (Stock actual: ' + prod.stock + ')';
+      document.getElementById('modal-inv-compra-prod').innerText = `${prod.codigo} - ${prod.nombre} (Stock actual: ${prod.stock})`;
       document.getElementById('inv-compra-cant').value = '';
       document.getElementById('inv-compra-precio').value = prod.ultimo_costo || '';
       document.getElementById('inv-compra-detalle').value = '';
-      var f = document.getElementById('inv-compra-foto'); if (f) f.value = '';
+      const f = document.getElementById('inv-compra-foto'); if (f) f.value = '';
       document.getElementById('modal-inv-compra').classList.add('active');
     }
 
     async function confirmarCompraInventario() {
-      var id = document.getElementById('modal-inv-compra-id').value;
-      var cant = parseFloat(document.getElementById('inv-compra-cant').value);
-      var costo = parseFloat(document.getElementById('inv-compra-precio').value);
-      var detalle = document.getElementById('inv-compra-detalle').value.trim() || 'Compra / Ingreso';
+      const id = document.getElementById('modal-inv-compra-id').value;
+      const cant = parseFloat(document.getElementById('inv-compra-cant').value);
+      const costo = parseFloat(document.getElementById('inv-compra-precio').value);
+      const detalle = document.getElementById('inv-compra-detalle').value.trim() || 'Compra / Ingreso';
       if (isNaN(cant) || cant <= 0 || isNaN(costo) || costo <= 0) return alert('Ingresa cantidad y costo válidos.');
 
       procesarArchivoImagen(document.getElementById('inv-compra-foto'), async function(fotoBase64) {
-        var prod = cacheInv.find(x => String(x.id) === String(id));
+        const prod = cacheInv.find(x => String(x.id) === String(id));
         if (prod) {
-          var stockAnt = Number(prod.stock) || 0;
-          var cppAnt = Number(prod.costo_promedio) || 0;
-          var nuevoStock = stockAnt + cant;
-          var nuevoCpp = nuevoStock > 0 ? (((stockAnt * cppAnt) + (cant * costo)) / nuevoStock) : costo;
+          const stockAnt = Number(prod.stock) || 0;
+          const cppAnt = Number(prod.costo_promedio) || 0;
+          const nuevoStock = stockAnt + cant;
+          let nuevoCpp = nuevoStock > 0 ? (((stockAnt * cppAnt) + (cant * costo)) / nuevoStock) : costo;
           nuevoCpp = Number(nuevoCpp.toFixed(2));
 
           prod.stock = nuevoStock;
@@ -1407,22 +1413,14 @@
           prod.precio_unidad = Number((nuevoCpp * 1.35).toFixed(2));
 
           if (!prod.inventario_movimientos) prod.inventario_movimientos = [];
-          var nuevoMov = {
-            id: 'loc_mov_' + Date.now(),
-            producto_id: id,
-            tipo: 'compra',
-            cantidad: cant,
-            precio_unitario: costo,
-            tipo_precio: 'compra',
-            total: Number((cant * costo).toFixed(2)),
-            fecha: hoyStr,
-            detalle: detalle,
-            foto_url: fotoBase64
+          const nuevoMov = {
+            id: 'loc_mov_' + Date.now(), producto_id: id, tipo: 'compra', cantidad: cant,
+            precio_unitario: costo, tipo_precio: 'compra', total: Number((cant * costo).toFixed(2)),
+            fecha: hoyStr, detalle, foto_url: fotoBase64
           };
           prod.inventario_movimientos.unshift(nuevoMov);
           guardarMemoriaLocal();
           dibujarInventario();
-
           cerrarModal('modal-inv-compra');
 
           if (navigator.onLine && db && !String(id).startsWith('loc_')) {
@@ -1433,7 +1431,7 @@
               }).eq('id', id);
               await db.from('inventario_movimientos').insert({
                 producto_id: id, tipo: 'compra', cantidad: cant, precio_unitario: costo,
-                tipo_precio: 'compra', total: (cant * costo), fecha: hoyStr, detalle: detalle, foto_url: fotoBase64
+                tipo_precio: 'compra', total: (cant * costo), fecha: hoyStr, detalle, foto_url: fotoBase64
               });
             } catch(e) {}
           }
@@ -1442,43 +1440,36 @@
     }
 
     function abrirModalVentaInv(id) {
-      var prod = cacheInv.find(x => String(x.id) === String(id));
+      const prod = cacheInv.find(x => String(x.id) === String(id));
       if (!prod) return;
       document.getElementById('modal-inv-venta-id').value = id;
-      document.getElementById('modal-inv-venta-prod').innerText = prod.codigo + ' - ' + prod.nombre + ' (Disponible: ' + prod.stock + ')';
+      document.getElementById('modal-inv-venta-prod').innerText = `${prod.codigo} - ${prod.nombre} (Disponible: ${prod.stock})`;
       document.getElementById('inv-venta-cant').value = '1';
       document.getElementById('inv-venta-detalle').value = '';
-      var f = document.getElementById('inv-venta-foto'); if (f) f.value = '';
+      const f = document.getElementById('inv-venta-foto'); if (f) f.value = '';
       document.getElementById('modal-inv-venta').classList.add('active');
     }
 
     async function confirmarVentaInventario() {
-      var id = document.getElementById('modal-inv-venta-id').value;
-      var cant = parseFloat(document.getElementById('inv-venta-cant').value);
-      var tipoPrecio = document.getElementById('inv-venta-tipo-precio').value;
-      var detalle = document.getElementById('inv-venta-detalle').value.trim() || 'Venta / Salida';
+      const id = document.getElementById('modal-inv-venta-id').value;
+      const cant = parseFloat(document.getElementById('inv-venta-cant').value);
+      const tipoPrecio = document.getElementById('inv-venta-tipo-precio').value;
+      const detalle = document.getElementById('inv-venta-detalle').value.trim() || 'Venta / Salida';
       if (isNaN(cant) || cant <= 0) return alert('Ingresa cantidad válida.');
 
-      var prod = cacheInv.find(x => String(x.id) === String(id));
+      const prod = cacheInv.find(x => String(x.id) === String(id));
       if (!prod) return;
       if (cant > prod.stock) return alert('Stock insuficiente. Tienes: ' + prod.stock);
 
-      var pUnit = tipoPrecio === 'mayor' ? prod.precio_mayor : prod.precio_unidad;
+      const pUnit = tipoPrecio === 'mayor' ? prod.precio_mayor : prod.precio_unidad;
 
       procesarArchivoImagen(document.getElementById('inv-venta-foto'), async function(fotoBase64) {
         prod.stock = Math.max(0, prod.stock - cant);
         if (!prod.inventario_movimientos) prod.inventario_movimientos = [];
-        var nuevoMov = {
-          id: 'loc_mov_' + Date.now(),
-          producto_id: id,
-          tipo: 'venta',
-          cantidad: cant,
-          precio_unitario: pUnit,
-          tipo_precio: tipoPrecio,
-          total: Number((cant * pUnit).toFixed(2)),
-          fecha: hoyStr,
-          detalle: detalle + ' (' + (tipoPrecio === 'mayor' ? 'PVP Mayor' : 'Unidad') + ')',
-          foto_url: fotoBase64
+        const nuevoMov = {
+          id: 'loc_mov_' + Date.now(), producto_id: id, tipo: 'venta', cantidad: cant,
+          precio_unitario: pUnit, tipo_precio: tipoPrecio, total: Number((cant * pUnit).toFixed(2)),
+          fecha: hoyStr, detalle: `${detalle} (${tipoPrecio === 'mayor' ? 'PVP Mayor' : 'Unidad'})`, foto_url: fotoBase64
         };
         prod.inventario_movimientos.unshift(nuevoMov);
         guardarMemoriaLocal();
@@ -1498,7 +1489,7 @@
     }
 
     async function borrarProducto(id) {
-      if (!confirm('¿Eliminar este producto y su historial?')) return;
+      if (!confirm('¿Eliminar este producto y todo su historial Kárdex?')) return;
       cacheInv = cacheInv.filter(x => String(x.id) !== String(id));
       guardarMemoriaLocal(); dibujarInventario();
       if (navigator.onLine && db && !String(id).startsWith('loc_')) {
@@ -1508,90 +1499,87 @@
 
     function renderInventario() { dibujarInventario(); }
     function dibujarInventario() {
-      var lista = cacheInv.slice();
-      var q = (document.getElementById('buscar-inv').value || '').toLowerCase().trim();
+      let lista = cacheInv.slice();
+      const q = (document.getElementById('buscar-inv').value || '').toLowerCase().trim();
       if (q) lista = lista.filter(x => (x.nombre && x.nombre.toLowerCase().includes(q)) || (x.codigo && x.codigo.toLowerCase().includes(q)));
 
-      var cont = document.getElementById('lista-inventario');
+      const cont = document.getElementById('lista-inventario');
       if (!lista.length) { cont.innerHTML = '<p style="color:var(--text-muted); text-align:center; padding:20px;">No hay productos en bodega.</p>'; return; }
 
-      var html = '';
-      for (var i = 0; i < lista.length; i++) {
-        var x = lista[i];
-        var estaAbierto = invAbiertos.includes(String(x.id));
-        var movs = x.inventario_movimientos || [];
-        var bajoStock = x.stock <= 3;
+      let html = '';
+      for (let x of lista) {
+        const abierto = invAbiertos.includes(String(x.id));
+        const movs = x.inventario_movimientos || [];
+        const bajoStock = x.stock <= 3;
 
-        html += '<div class="acc-card card-inv">' +
-          '<div class="acc-header" onclick="toggleInv(\'' + x.id + '\')">' +
-            '<div>' +
-              '<div class="acc-title">' + x.codigo + ' • ' + x.nombre + '</div>' +
-              '<div class="acc-sub">Stock: <b style="color:' + (bajoStock ? 'var(--danger)' : 'var(--success)') + '">' + x.stock + ' unds</b> | CPP: <b>$' + Number(x.costo_promedio).toFixed(2) + '</b></div>' +
-            '</div>' +
-            '<div style="display:flex; align-items:center; gap:8px;">' +
-              '<span class="badge ' + (bajoStock ? 'badge-pending' : 'badge-done') + '">' + (bajoStock ? 'Bajo' : 'En Stock') + '</span>' +
-              '<span style="font-size:0.8rem; color:var(--text-muted);">' + (estaAbierto ? '▲' : '▼') + '</span>' +
-            '</div>' +
-          '</div>' +
-          '<div class="acc-body ' + (estaAbierto ? 'open' : '') + '">' +
-            '<div class="saldo-box">' +
-              '<div><span>Costo CPP</span><strong>$' + Number(x.costo_promedio).toFixed(2) + '</strong></div>' +
-              '<div><span>PVP Mayor (+15%)</span><strong style="color:#60a5fa;">$' + Number(x.precio_mayor).toFixed(2) + '</strong></div>' +
-              '<div><span>Unidad (+35%)</span><strong style="color:var(--success);">$' + Number(x.precio_unidad).toFixed(2) + '</strong></div>' +
-            '</div>' +
-            '<div style="display:flex; gap:8px; margin:10px 0;">' +
-              '<button class="btn btn-secondary" style="flex:1; background:#065f46; color:#fff;" onclick="abrirModalCompraInv(\'' + x.id + '\')">+ Comprar (Entrada)</button>' +
-              '<button class="btn btn-secondary" style="flex:1; background:#1e40af; color:#fff;" onclick="abrirModalVentaInv(\'' + x.id + '\')">- Vender (Salida)</button>' +
-            '</div>' +
-            (x.foto_url ? '<div style="margin: 8px 0;"><button class="thumb-btn" onclick="abrirVisor(\'' + x.foto_url + '\')">📷 Ver Foto Producto</button></div>' : '') +
-            '<div class="ledger-section">' +
-              '<div class="ledger-title"><span>Movimientos Kárdex:</span><span style="font-size:0.75rem; color:var(--text-muted);">' + movs.length + ' regs</span></div>';
-
-        for (var mIdx = 0; mIdx < movs.length; mIdx++) {
-          var m = movs[mIdx];
-          var esCompra = m.tipo === 'compra';
-          html += '<div class="ledger-item">' +
-            '<div class="det">' +
-              '<b>' + (esCompra ? '🟢 Entrada' : '🔴 Venta') + ': ' + m.cantidad + ' unds</b>' +
-              '<span style="font-size:0.7rem; color:var(--text-muted);">' + (m.detalle || '') + ' • ' + (m.fecha || '') + '</span>' +
-              (m.foto_url ? '<button class="thumb-btn" onclick="abrirVisor(\'' + m.foto_url + '\')">🧾 Ver Factura / Recibo</button>' : '') +
-            '</div>' +
-            '<div class="actions"><b style="color:' + (esCompra ? '#38bdf8' : 'var(--success)') + ';">$' + Number(m.total).toFixed(2) + '</b></div>' +
-          '</div>';
-        }
-
-        html += '</div>' +
-          '<div style="display:flex; justify-content: flex-end; margin-top: 14px;">' +
-            '<button class="btn btn-danger" onclick="borrarProducto(\'' + x.id + '\')">✕ Eliminar Producto</button>' +
-          '</div>' +
-        '</div></div>';
+        html += `
+          <div class="acc-card card-inv">
+            <div class="acc-header" onclick="toggleInv('${x.id}')">
+              <div>
+                <div class="acc-title">${x.codigo} • ${x.nombre}</div>
+                <div class="acc-sub">Stock: <b style="color:${bajoStock ? 'var(--danger)' : 'var(--success)'}">${x.stock} unds</b> | CPP: <b>$${Number(x.costo_promedio).toFixed(2)}</b></div>
+              </div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span class="badge ${bajoStock ? 'badge-pending' : 'badge-done'}">${bajoStock ? 'Bajo' : 'En Stock'}</span>
+                <span style="font-size:0.8rem; color:var(--text-muted);">${abierto ? '▲' : '▼'}</span>
+              </div>
+            </div>
+            <div class="acc-body ${abierto ? 'open' : ''}">
+              <div class="saldo-box">
+                <div><span>Costo CPP</span><strong>$${Number(x.costo_promedio).toFixed(2)}</strong></div>
+                <div><span>PVP Mayor (+15%)</span><strong style="color:#60a5fa;">$${Number(x.precio_mayor).toFixed(2)}</strong></div>
+                <div><span>Unidad (+35%)</span><strong style="color:var(--success);">$${Number(x.precio_unidad).toFixed(2)}</strong></div>
+              </div>
+              <div style="display:flex; gap:8px; margin:10px 0;">
+                <button class="btn btn-secondary" style="flex:1; background:#065f46; color:#fff;" onclick="abrirModalCompraInv('${x.id}')">+ Comprar (Entrada)</button>
+                <button class="btn btn-secondary" style="flex:1; background:#1e40af; color:#fff;" onclick="abrirModalVentaInv('${x.id}')">- Vender (Salida)</button>
+              </div>
+              ${x.foto_url ? `<div style="margin: 8px 0;"><button class="thumb-btn" onclick="abrirVisor('${x.foto_url}')">📷 Ver Foto Producto</button></div>` : ''}
+              <div class="ledger-section">
+                <div class="ledger-title"><span>Movimientos Kárdex:</span><span style="font-size:0.75rem; color:var(--text-muted);">${movs.length} regs</span></div>
+                ${movs.map(m => {
+                  const esCompra = m.tipo === 'compra';
+                  return `
+                    <div class="ledger-item">
+                      <div class="det">
+                        <b>${esCompra ? '🟢 Entrada' : '🔴 Salida'}: ${m.cantidad} unds</b>
+                        <span style="font-size:0.7rem; color:var(--text-muted);">${m.detalle || ''} • ${m.fecha \vert{}\vert{} ''}</span>${m.foto_url ? `<button class="thumb-btn" onclick="abrirVisor('${m.foto_url}')">🧾 Ver Factura / Recibo</button>` : ''}
+                      </div>
+                      <div class="actions"><b style="color:${esCompra ? '#38bdf8' : 'var(--success)'};">$${Number(m.total).toFixed(2)}</b></div>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+              <div style="display:flex; justify-content: flex-end; margin-top: 14px;">
+                <button class="btn btn-danger" onclick="borrarProducto('${x.id}')">✕ Eliminar Producto</button>
+              </div>
+            </div>
+          </div>
+        `;
       }
       cont.innerHTML = html;
     }
 
-    // 5. PACIENTES / HISTORIA CLÍNICA
+    // 5. EXPEDIENTE CLÍNICO (EVOLUCIONES, RECETAS Y EXÁMENES)
     async function cargarPacientes() {
       dibujarPacientes();
       if (navigator.onLine && db) {
         try {
-          const { data, error } = await db.from('pacientes').select('*, pacientes_consultas(*)').order('creado_el', { ascending: false });
+          const { data, error } = await db.from('pacientes').select('*, pacientes_evoluciones(*), pacientes_recetas(*), pacientes_examenes(*)').order('creado_el', { ascending: false });
           if (!error && data) { cachePac = data; guardarMemoriaLocal(); dibujarPacientes(); }
         } catch(e) {}
       }
     }
 
     async function guardarPaciente() {
-      var nom = document.getElementById('pac-nombre').value.trim();
-      var tel = document.getElementById('pac-telefono').value.trim();
-      var ant = document.getElementById('pac-antecedentes').value.trim();
+      const nom = document.getElementById('pac-nombre').value.trim();
+      const tel = document.getElementById('pac-telefono').value.trim();
+      const ant = document.getElementById('pac-antecedentes').value.trim();
       if (!nom) return alert('El nombre del paciente es obligatorio.');
 
-      var nuevoPac = {
-        id: 'loc_pac_' + Date.now(),
-        nombre: nom,
-        telefono: tel,
-        antecedentes: ant,
-        pacientes_consultas: []
+      const nuevoPac = {
+        id: 'loc_pac_' + Date.now(), nombre: nom, telefono: tel, antecedentes: ant,
+        pacientes_evoluciones: [], pacientes_recetas: [], pacientes_examenes: []
       };
       cachePac.unshift(nuevoPac);
       pacAbiertos.push(String(nuevoPac.id));
@@ -1610,58 +1598,121 @@
       }
     }
 
-    function abrirModalConsulta(id) {
-      var pac = cachePac.find(x => String(x.id) === String(id));
-      if (!pac) return;
-      document.getElementById('modal-pac-id').value = id;
-      document.getElementById('modal-pac-nombre').innerText = 'Paciente: ' + pac.nombre;
-      document.getElementById('con-motivo').value = '';
-      document.getElementById('con-diagnostico').value = '';
-      document.getElementById('con-tratamiento').value = '';
-      document.getElementById('con-peso').value = '';
-      document.getElementById('con-estatura').value = '';
-      document.getElementById('con-costo').value = '30.00';
-      var f = document.getElementById('con-foto'); if (f) f.value = '';
-      document.getElementById('modal-pac-consulta').classList.add('active');
+    function cambiarSubTabPac(pacId, subTab) {
+      subTabPacientes[pacId] = subTab;
+      dibujarPacientes();
     }
 
-    async function confirmarConsultaPaciente() {
-      var id = document.getElementById('modal-pac-id').value;
-      var mot = document.getElementById('con-motivo').value.trim();
-      var diag = document.getElementById('con-diagnostico').value.trim();
-      var trat = document.getElementById('con-tratamiento').value.trim();
-      var peso = parseFloat(document.getElementById('con-peso').value) || null;
-      var est = parseFloat(document.getElementById('con-estatura').value) || null;
-      var costo = parseFloat(document.getElementById('con-costo').value) || 0;
-      if (!mot || !diag) return alert('Motivo y diagnóstico son requeridos.');
+    // A. EVOLUCIONES
+    function abrirModalEvolucion(id) {
+      const pac = cachePac.find(x => String(x.id) === String(id));
+      if (!pac) return;
+      document.getElementById('modal-pac-evo-id').value = id;
+      document.getElementById('modal-pac-evo-nombre').innerText = 'Paciente: ' + pac.nombre;
+      document.getElementById('evo-motivo').value = '';
+      document.getElementById('evo-diag').value = '';
+      document.getElementById('evo-plan').value = '';
+      document.getElementById('evo-peso').value = '';
+      document.getElementById('evo-estatura').value = '';
+      document.getElementById('evo-costo').value = '30.00';
+      document.getElementById('modal-pac-evo').classList.add('active');
+    }
 
-      procesarArchivoImagen(document.getElementById('con-foto'), async function(fotoBase64) {
-        var pac = cachePac.find(x => String(x.id) === String(id));
+    async function confirmarEvolucion() {
+      const id = document.getElementById('modal-pac-evo-id').value;
+      const motivo = document.getElementById('evo-motivo').value.trim();
+      const diag = document.getElementById('evo-diag').value.trim();
+      const plan = document.getElementById('evo-plan').value.trim();
+      const peso = parseFloat(document.getElementById('evo-peso').value) || null;
+      const est = parseFloat(document.getElementById('evo-estatura').value) || null;
+      const costo = parseFloat(document.getElementById('evo-costo').value) || 0;
+      if (!motivo || !diag) return alert('Motivo y diagnóstico son requeridos.');
+
+      const pac = cachePac.find(x => String(x.id) === String(id));
+      if (pac) {
+        if (!pac.pacientes_evoluciones) pac.pacientes_evoluciones = [];
+        const nuevaEvo = { id: 'loc_evo_' + Date.now(), paciente_id: id, fecha: hoyStr, motivo, diagnostico: diag, plan_tratamiento: plan, peso, estatura: est, costo };
+        pac.pacientes_evoluciones.unshift(nuevaEvo);
+        guardarMemoriaLocal();
+        dibujarPacientes();
+        cerrarModal('modal-pac-evo');
+
+        if (navigator.onLine && db && !String(id).startsWith('loc_')) {
+          try {
+            await db.from('pacientes_evoluciones').insert({ paciente_id: id, fecha: hoyStr, motivo, diagnostico: diag, plan_tratamiento: plan, peso, estatura: est, costo });
+          } catch(e) {}
+        }
+      }
+    }
+
+    // B. RECETAS
+    function abrirModalReceta(id) {
+      const pac = cachePac.find(x => String(x.id) === String(id));
+      if (!pac) return;
+      document.getElementById('modal-pac-rec-id').value = id;
+      document.getElementById('modal-pac-rec-nombre').innerText = 'Paciente: ' + pac.nombre;
+      document.getElementById('rec-meds').value = '';
+      document.getElementById('rec-ind').value = '';
+      const f = document.getElementById('rec-foto'); if (f) f.value = '';
+      document.getElementById('modal-pac-rec').classList.add('active');
+    }
+
+    async function confirmarReceta() {
+      const id = document.getElementById('modal-pac-rec-id').value;
+      const meds = document.getElementById('rec-meds').value.trim();
+      const ind = document.getElementById('rec-ind').value.trim();
+      if (!meds) return alert('Indica los medicamentos prescritos.');
+
+      procesarArchivoImagen(document.getElementById('rec-foto'), async function(fotoBase64) {
+        const pac = cachePac.find(x => String(x.id) === String(id));
         if (pac) {
-          if (!pac.pacientes_consultas) pac.pacientes_consultas = [];
-          var nuevaCon = {
-            id: 'loc_con_' + Date.now(),
-            paciente_id: id,
-            fecha: hoyStr,
-            motivo: mot,
-            diagnostico: diag,
-            tratamiento: trat,
-            peso: peso,
-            estatura: est,
-            costo: costo,
-            foto_url: fotoBase64
-          };
-          pac.pacientes_consultas.unshift(nuevaCon);
+          if (!pac.pacientes_recetas) pac.pacientes_recetas = [];
+          const nuevaRec = { id: 'loc_rec_' + Date.now(), paciente_id: id, fecha: hoyStr, medicamentos: meds, indicaciones: ind, foto_url: fotoBase64 };
+          pac.pacientes_recetas.unshift(nuevaRec);
           guardarMemoriaLocal();
           dibujarPacientes();
-          cerrarModal('modal-pac-consulta');
+          cerrarModal('modal-pac-rec');
 
           if (navigator.onLine && db && !String(id).startsWith('loc_')) {
             try {
-              await db.from('pacientes_consultas').insert({
-                paciente_id: id, fecha: hoyStr, motivo: mot, diagnostico: diag,
-                tratamiento: trat, peso: peso, estatura: est, costo: costo, foto_url: fotoBase64
-              });
+              await db.from('pacientes_recetas').insert({ paciente_id: id, fecha: hoyStr, medicamentos: meds, indicaciones: ind, foto_url: fotoBase64 });
+            } catch(e) {}
+          }
+        }
+      });
+    }
+
+    // C. EXÁMENES
+    function abrirModalExamen(id) {
+      const pac = cachePac.find(x => String(x.id) === String(id));
+      if (!pac) return;
+      document.getElementById('modal-pac-exa-id').value = id;
+      document.getElementById('modal-pac-exa-nombre').innerText = 'Paciente: ' + pac.nombre;
+      document.getElementById('exa-tipo').value = '';
+      document.getElementById('exa-concl').value = '';
+      const f = document.getElementById('exa-foto'); if (f) f.value = '';
+      document.getElementById('modal-pac-exa').classList.add('active');
+    }
+
+    async function confirmarExamen() {
+      const id = document.getElementById('modal-pac-exa-id').value;
+      const tipo = document.getElementById('exa-tipo').value.trim();
+      const concl = document.getElementById('exa-concl').value.trim();
+      if (!tipo) return alert('Especifica el tipo de estudio o examen.');
+
+      procesarArchivoImagen(document.getElementById('exa-foto'), async function(fotoBase64) {
+        const pac = cachePac.find(x => String(x.id) === String(id));
+        if (pac) {
+          if (!pac.pacientes_examenes) pac.pacientes_examenes = [];
+          const nuevoExa = { id: 'loc_exa_' + Date.now(), paciente_id: id, fecha: hoyStr, tipo_estudio: tipo, conclusion: concl, foto_url: fotoBase64 };
+          pac.pacientes_examenes.unshift(nuevoExa);
+          guardarMemoriaLocal();
+          dibujarPacientes();
+          cerrarModal('modal-pac-exa');
+
+          if (navigator.onLine && db && !String(id).startsWith('loc_')) {
+            try {
+              await db.from('pacientes_examenes').insert({ paciente_id: id, fecha: hoyStr, tipo_estudio: tipo, conclusion: concl, foto_url: fotoBase64 });
             } catch(e) {}
           }
         }
@@ -1669,7 +1720,7 @@
     }
 
     async function borrarPaciente(id) {
-      if (!confirm('¿Eliminar esta ficha y sus consultas?')) return;
+      if (!confirm('¿Eliminar expediente clínico completo?')) return;
       cachePac = cachePac.filter(x => String(x.id) !== String(id));
       guardarMemoriaLocal(); dibujarPacientes();
       if (navigator.onLine && db && !String(id).startsWith('loc_')) {
@@ -1679,60 +1730,112 @@
 
     function renderPacientes() { dibujarPacientes(); }
     function dibujarPacientes() {
-      var lista = cachePac.slice();
-      var q = (document.getElementById('buscar-pac').value || '').toLowerCase().trim();
+      let lista = cachePac.slice();
+      const q = (document.getElementById('buscar-pac').value || '').toLowerCase().trim();
       if (q) lista = lista.filter(x => x.nombre && x.nombre.toLowerCase().includes(q));
 
-      var cont = document.getElementById('lista-pacientes');
-      if (!lista.length) { cont.innerHTML = '<p style="color:var(--text-muted); text-align:center; padding:20px;">No hay pacientes registrados.</p>'; return; }
+      const cont = document.getElementById('lista-pacientes');
+      if (!lista.length) { cont.innerHTML = '<p style="color:var(--text-muted); text-align:center; padding:20px;">No hay expedientes clínicos registrados.</p>'; return; }
 
-      var html = '';
-      for (var i = 0; i < lista.length; i++) {
-        var x = lista[i];
-        var estaAbierto = pacAbiertos.includes(String(x.id));
-        var cons = x.pacientes_consultas || [];
+      let html = '';
+      for (let x of lista) {
+        const abierto = pacAbiertos.includes(String(x.id));
+        const currentSubTab = subTabPacientes[x.id] || 'evo';
+        const evos = x.pacientes_evoluciones || [];
+        const recs = x.pacientes_recetas || [];
+        const exas = x.pacientes_examenes || [];
 
-        html += '<div class="acc-card card-med">' +
-          '<div class="acc-header" onclick="togglePac(\'' + x.id + '\')">' +
-            '<div>' +
-              '<div class="acc-title">' + x.nombre + '</div>' +
-              '<div class="acc-sub">' + (x.telefono ? '📞 ' + x.telefono : 'Sin teléfono') + ' • Consultas: <b>' + cons.length + '</b></div>' +
-            '</div>' +
-            '<div style="display:flex; align-items:center; gap:8px;">' +
-              '<span class="badge" style="background:rgba(168,85,247,0.18); color:#c084fc; border:1px solid rgba(168,85,247,0.35);">Clínica</span>' +
-              '<span style="font-size:0.8rem; color:var(--text-muted);">' + (estaAbierto ? '▲' : '▼') + '</span>' +
-            '</div>' +
-          '</div>' +
-          '<div class="acc-body ' + (estaAbierto ? 'open' : '') + '">' +
-            (x.antecedentes ? '<div style="background:var(--card-inner); padding:8px 10px; border-radius:6px; font-size:0.82rem; color:#f1f5f9; margin-bottom:10px;">⚠️ <b>Antecedentes / Alergias:</b> ' + x.antecedentes + '</div>' : '') +
-            '<div style="margin-bottom:10px;">' +
-              '<button class="btn btn-primary" style="background:#9333ea;" onclick="abrirModalConsulta(\'' + x.id + '\')">+ Nueva Consulta / Evolución</button>' +
-            '</div>' +
-            '<div class="ledger-section">' +
-              '<div class="ledger-title"><span>Historial de Consultas:</span><span style="font-size:0.75rem; color:var(--text-muted);">' + cons.length + ' registros</span></div>';
+        html += `
+          <div class="acc-card card-med">
+            <div class="acc-header" onclick="togglePac('${x.id}')">
+              <div>
+                <div class="acc-title">${x.nombre}</div>
+                <div class="acc-sub">${x.telefono ? '📞 ' + x.telefono : 'Sin teléfono'} • Evos: <b>${evos.length}</b> | Recs: <b>${recs.length}</b> | Exams: <b>${exas.length}</b></div>
+              </div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span class="badge" style="background:rgba(168,85,247,0.18); color:#c084fc; border:1px solid rgba(168,85,247,0.35);">Expediente</span>
+                <span style="font-size:0.8rem; color:var(--text-muted);">${abierto ? '▲' : '▼'}</span>
+              </div>
+            </div>
+            <div class="acc-body ${abierto ? 'open' : ''}">
+              ${x.antecedentes ? `<div style="background:var(--card-inner); padding:8px 10px; border-radius:6px; font-size:0.82rem; color:#f1f5f9; margin-bottom:12px;">⚠️ <b>Antecedentes / Alergias:</b> ${x.antecedentes}</div>` : ''}
 
-        for (var cIdx = 0; cIdx < cons.length; cIdx++) {
-          var c = cons[cIdx];
-          html += '<div class="ledger-item" style="flex-direction:column; align-items:flex-start; gap:6px;">' +
-            '<div style="display:flex; justify-content:space-between; width:100%;">' +
-              '<b style="color:var(--accent);">📅 ' + c.fecha + ' - ' + c.motivo + '</b>' +
-              '<span style="color:var(--success); font-weight:700;">$' + Number(c.costo).toFixed(2) + '</span>' +
-            '</div>' +
-            '<div style="font-size:0.8rem; color:#cbd5e1;"><b>Diagnóstico:</b> ' + c.diagnostico + '</div>' +
-            (c.tratamiento ? '<div style="font-size:0.78rem; color:#94a3b8;">💊 <b>Tratamiento:</b> ' + c.tratamiento + '</div>' : '') +
-            '<div style="font-size:0.74rem; color:var(--matte-steel);">' +
-              (c.peso ? '⚖️ Peso: ' + c.peso + 'kg ' : '') +
-              (c.estatura ? '📏 Estatura: ' + c.estatura + 'cm' : '') +
-            '</div>' +
-            (c.foto_url ? '<button class="thumb-btn" onclick="abrirVisor(\'' + c.foto_url + '\')">🧾 Ver Receta / Examen Adjunto</button>' : '') +
-          '</div>';
-        }
+              <!-- SELECTOR DE 3 SUB-PESTAÑAS -->
+              <div class="hc-tabs">
+                <button class="hc-tab-btn ${currentSubTab === 'evo' ? 'active' : ''}" onclick="cambiarSubTabPac('${x.id}', 'evo')">📋 Evolución (${evos.length})</button>
+                <button class="hc-tab-btn ${currentSubTab === 'rec' ? 'active' : ''}" onclick="cambiarSubTabPac('${x.id}', 'rec')">💊 Recetas (${recs.length})</button>
+                <button class="hc-tab-btn ${currentSubTab === 'exa' ? 'active' : ''}" onclick="cambiarSubTabPac('${x.id}', 'exa')">🔬 Exámenes (${exas.length})</button>
+              </div>
 
-        html += '</div>' +
-          '<div style="display:flex; justify-content: flex-end; margin-top: 14px;">' +
-            '<button class="btn btn-danger" onclick="borrarPaciente(\'' + x.id + '\')">✕ Eliminar Ficha</button>' +
-          '</div>' +
-        '</div></div>';
+              <!-- CONTENIDO SUB-PESTAÑA 1: EVOLUCIÓN -->
+              ${currentSubTab === 'evo' ? `
+                <div style="margin-bottom:10px;">
+                  <button class="btn btn-primary" style="background:#9333ea;" onclick="abrirModalEvolucion('${x.id}')">+ Nueva Nota de Evolución</button>
+                </div>
+                <div class="ledger-section" style="border:none; padding-top:0;">
+                  ${evos.length === 0 ? '<p style="font-size:0.78rem; color:var(--text-muted); padding:8px 0;">Sin notas de evolución registradas.</p>' : ''}
+                  ${evos.map(e => `
+                    <div class="ledger-item" style="flex-direction:column; align-items:flex-start; gap:5px;">
+                      <div style="display:flex; justify-content:space-between; width:100%;">
+                        <b style="color:var(--accent);">📅 ${e.fecha} - ${e.motivo}</b>
+                        <span style="color:var(--success); font-weight:700;">$${Number(e.costo).toFixed(2)}</span>
+                      </div>
+                      <div style="font-size:0.8rem; color:#cbd5e1;"><b>Diagnóstico:</b> ${e.diagnostico}</div>
+                      ${e.plan_tratamiento ? `<div style="font-size:0.78rem; color:#94a3b8;"><b>Plan:</b> ${e.plan_tratamiento}</div>` : ''}
+                      <div style="font-size:0.72rem; color:var(--matte-steel);">
+                        ${e.peso ? `⚖️ Peso: ${e.peso}kg ` : ''}
+                        ${e.estatura ? `📏 Talla: ${e.estatura}cm` : ''}
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              ` : ''}
+
+              <!-- CONTENIDO SUB-PESTAÑA 2: RECETAS -->
+              ${currentSubTab === 'rec' ? `
+                <div style="margin-bottom:10px;">
+                  <button class="btn btn-primary" style="background:#0284c7;" onclick="abrirModalReceta('${x.id}')">+ Prescribir Nueva Receta</button>
+                </div>
+                <div class="ledger-section" style="border:none; padding-top:0;">
+                  ${recs.length === 0 ? '<p style="font-size:0.78rem; color:var(--text-muted); padding:8px 0;">Sin recetas registradas.</p>' : ''}
+                  ${recs.map(r => `
+                    <div class="ledger-item" style="flex-direction:column; align-items:flex-start; gap:5px;">
+                      <div style="display:flex; justify-content:space-between; width:100%;">
+                        <b style="color:#60a5fa;">💊 ${r.fecha} - Medicamentos:</b>
+                      </div>
+                      <div style="font-size:0.84rem; color:#fff; font-weight:600;">${r.medicamentos}</div>
+                      ${r.indicaciones ? `<div style="font-size:0.78rem; color:#94a3b8;"><b>Indicaciones:</b> ${r.indicaciones}</div>` : ''}
+                      ${r.foto_url ? `<button class="thumb-btn" onclick="abrirVisor('${r.foto_url}')">🧾 Ver Receta Firmada</button>` : ''}
+                    </div>
+                  `).join('')}
+                </div>
+              ` : ''}
+
+              <!-- CONTENIDO SUB-PESTAÑA 3: EXÁMENES -->
+              ${currentSubTab === 'exa' ? `
+                <div style="margin-bottom:10px;">
+                  <button class="btn btn-primary" style="background:#0d9488;" onclick="abrirModalExamen('${x.id}')">+ Adjuntar Resultado de Examen</button>
+                </div>
+                <div class="ledger-section" style="border:none; padding-top:0;">
+                  ${exas.length === 0 ? '<p style="font-size:0.78rem; color:var(--text-muted); padding:8px 0;">Sin exámenes adjuntos.</p>' : ''}
+                  ${exas.map(ex => `
+                    <div class="ledger-item" style="flex-direction:column; align-items:flex-start; gap:5px;">
+                      <div style="display:flex; justify-content:space-between; width:100%;">
+                        <b style="color:var(--teal);">🔬 ${ex.fecha} - ${ex.tipo_estudio}</b>
+                      </div>
+                      ${ex.conclusion ? `<div style="font-size:0.8rem; color:#cbd5e1;"><b>Conclusión:</b> ${ex.conclusion}</div>` : ''}
+                      ${ex.foto_url ? `<button class="thumb-btn" style="background:#0d9488;" onclick="abrirVisor('${ex.foto_url}')">📷 Ver Placa / Informe Lab</button>` : ''}
+                    </div>
+                  `).join('')}
+                </div>
+              ` : ''}
+
+              <div style="display:flex; justify-content: flex-end; margin-top: 14px;">
+                <button class="btn btn-danger" onclick="borrarPaciente('${x.id}')">✕ Eliminar Expediente</button>
+              </div>
+            </div>
+          </div>
+        `;
       }
       cont.innerHTML = html;
     }
