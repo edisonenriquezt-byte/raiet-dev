@@ -323,10 +323,11 @@
       <div class="card">
         <div class="form-group"><label>Cita / Compromiso</label><input type="text" id="agenda-titulo" placeholder="Ej. Audiencia, Notaría, Reunión..."></div>
         <div class="form-group"><label>Detalles / Observaciones</label><textarea id="agenda-detalle" placeholder="Ej. Llevar contratos..."></textarea></div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-          <div class="form-group"><label>Fecha y Hora Cita</label><input type="datetime-local" id="agenda-fecha"></div>
-          <div class="form-group"><label>🔔 Alarma (Opcional)</label><input type="datetime-local" id="agenda-alarma"></div>
-        </div>
+        
+        <!-- CADA CAMPO EN SU PROPIA FILA LIMPIA -->
+        <div class="form-group"><label>Fecha y Hora Cita</label><input type="datetime-local" id="agenda-fecha"></div>
+        <div class="form-group"><label>🔔 Alarma Recordatorio (Opcional)</label><input type="datetime-local" id="agenda-alarma"></div>
+
         <div class="form-group"><label>Foto / Documento (Opcional)</label><input type="file" id="agenda-foto" accept="image/*"></div>
         <button class="btn btn-primary" onclick="guardarAgenda()">+ Anotar en Agenda</button>
       </div>
@@ -420,10 +421,8 @@
       <input type="hidden" id="edit-agenda-id">
       <div class="form-group"><label>Cita / Evento</label><input type="text" id="edit-agenda-titulo"></div>
       <div class="form-group"><label>Detalle / Nota</label><textarea id="edit-agenda-detalle"></textarea></div>
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-        <div class="form-group"><label>Fecha y Hora Cita</label><input type="datetime-local" id="edit-agenda-fecha"></div>
-        <div class="form-group"><label>🔔 Alarma Recordatorio</label><input type="datetime-local" id="edit-agenda-alarma"></div>
-      </div>
+      <div class="form-group"><label>Fecha y Hora Cita</label><input type="datetime-local" id="edit-agenda-fecha"></div>
+      <div class="form-group"><label>🔔 Alarma Recordatorio (Opcional)</label><input type="datetime-local" id="edit-agenda-alarma"></div>
       <div class="form-group"><label>Reemplazar Foto (Opcional)</label><input type="file" id="edit-agenda-foto" accept="image/*"></div>
       <div style="display: flex; gap: 8px; margin-top: 14px;">
         <button class="btn btn-primary" style="flex: 1;" onclick="confirmarEdicionAgenda()">Actualizar</button>
@@ -439,7 +438,6 @@
       <p id="modal-cliente-nombre" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;"></p>
       <input type="hidden" id="modal-venta-id">
       
-      <!-- SELECTOR DE CUENTA A IMPUTAR -->
       <div class="form-group">
         <label>Aplicar a Cuenta / Factura</label>
         <select id="abono-cargo-id" onchange="autoCompletarMontoAbono()">
@@ -452,7 +450,6 @@
         <div class="form-group"><label>Fecha Abono</label><input type="date" id="abono-fecha"></div>
       </div>
 
-      <!-- SECCIÓN INTELIGENTE DE EXCEDENTE / SOBRANTE -->
       <div id="box-excedente-abono" style="display:none; background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 8px; padding: 10px; margin-bottom: 12px;">
         <span style="font-size:0.75rem; color:#fbbf24; font-weight:800; display:block;">⚠️ Excedente por aplicar: $<span id="lbl-excedente-monto">0.00</span></span>
         <label style="margin-top:6px; color:#e2e8f0;">¿A qué cuenta aplicar el excedente?</label>
@@ -495,7 +492,6 @@
       <p id="modal-pago-nombre" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;"></p>
       <input type="hidden" id="modal-pago-id">
       
-      <!-- SELECTOR DE OBLIGACIÓN A IMPUTAR -->
       <div class="form-group">
         <label>Aplicar a Obligación / Factura</label>
         <select id="cuota-cargo-id" onchange="autoCompletarMontoPago()">
@@ -508,7 +504,6 @@
         <div class="form-group"><label>Fecha de Pago</label><input type="date" id="cuota-fecha"></div>
       </div>
 
-      <!-- SECCIÓN INTELIGENTE DE EXCEDENTE EN PAGOS -->
       <div id="box-excedente-pago" style="display:none; background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 8px; padding: 10px; margin-bottom: 12px;">
         <span style="font-size:0.75rem; color:#fbbf24; font-weight:800; display:block;">⚠️ Excedente por aplicar: $<span id="lbl-excedente-pago-monto">0.00</span></span>
         <label style="margin-top:6px; color:#e2e8f0;">¿A qué obligación aplicar el excedente?</label>
