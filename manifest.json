@@ -1,17 +1,23 @@
 {
-  "name": "Raiet Suite",
-  "short_name": "Raiet",
+  "name": "Raiet Suite DEV",
+  "short_name": "Raiet DEV",
+  "description": "Suite de Gestión Integral Raiet Suite DEV",
   "start_url": "./index.html",
-  "scope": "./",
   "display": "standalone",
-  "background_color": "#090a0d",
-  "theme_color": "#090a0d",
-  "orientation": "portrait",
+  "background_color": "#080a10",
+  "theme_color": "#080a10",
+  "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='100' fill='%23090a0d'/><circle cx='256' cy='256' r='180' fill='%232563eb'/><text x='50%' y='55%' font-family='sans-serif' font-size='180' font-weight='bold' fill='white' text-anchor='middle' dominant-baseline='middle'>R</text></svg>",
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
       "sizes": "512x512",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ]
