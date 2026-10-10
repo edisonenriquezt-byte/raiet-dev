@@ -215,7 +215,6 @@
     .factura-historial-box { margin-top: 6px; padding: 6px 8px; background: #080a10; border-radius: 6px; border-left: 2px solid var(--accent); display: flex; flex-direction: column; gap: 3px; }
     .factura-pago-line { font-size: 0.7rem; color: #cbd5e1; display: flex; justify-content: space-between; }
 
-    /* Plan de cuotas */
     .plan-cuotas-box { background: #0d121c; border: 1px solid var(--card-border); border-radius: 8px; padding: 10px; margin-top: 8px; }
     .cuota-row-input { display: grid; grid-template-columns: 1.4fr 1.2fr auto; gap: 6px; align-items: center; margin-bottom: 6px; }
     .compromiso-card-item { background: #080a10; border: 1px solid var(--card-border-subtle); border-radius: 6px; padding: 8px; margin-top: 5px; font-size: 0.74rem; display: flex; flex-direction: column; gap: 5px; }
@@ -1109,7 +1108,8 @@
         cuotasPactadas.forEach(function(cp, idx) {
           cacheCompromisos.push({
             id: 'loc_cp_' + Date.now() + '_' + idx, tipo: 'cobro', cliente_id: idCli, cargo_id: idCargo,
-            monto_pactado: cp.monto, monto_cubierto: 0, fecha_pactada: cp.fecha, estado: 'pendiente',
+            monto_pactado: cp.monto, monto_cubierto: 0, fecha_pactada: cp.fecha,
+            estado: saldoCargo <= 0.001 ? 'cumplido' : 'pendiente',
             historial_reprogramaciones: []
           });
         });
@@ -1156,7 +1156,8 @@
                 for (var k = 0; k < cuotasPactadas.length; k++) {
                   await db.from('compromisos_pago').insert({
                     id: 'cp_' + Date.now() + '_' + k, tipo: 'cobro', cliente_id: c.data.id, cargo_id: cg.data.id,
-                    monto_pactado: cuotasPactadas[k].monto, fecha_pactada: cuotasPactadas[k].fecha, estado: 'pendiente'
+                    monto_pactado: cuotasPactadas[k].monto, fecha_pactada: cuotasPactadas[k].fecha,
+                    estado: saldoCargo <= 0.001 ? 'cumplido' : 'pendiente'
                   });
                 }
               }
@@ -1173,7 +1174,6 @@
       document.getElementById('modal-venta-id').value = cliId;
       document.getElementById('modal-cliente-nombre').innerText = 'Cliente: ' + v.nombre;
       document.getElementById('modal-compromiso-origen-id').value = compOrigenId || '';
-      document.getElementById('abono-monto').value = (montoSugerido !== undefined && montoSugerido !== null) ? Number(montoSugerido).toFixed(2) : '';
       document.getElementById('abono-tipo').value = '';
       document.getElementById('abono-nota').value = '';
       document.getElementById('box-excedente-abono').style.display = 'none';
@@ -1183,6 +1183,8 @@
 
       var sel = document.getElementById('abono-cargo-id');
       sel.innerHTML = '<option value="">-- Saldo General (Sin vincular) --</option>';
+      var cargoSeleccionadoObj = null;
+
       (v.cobros_cargos || []).forEach(function(c) {
         var sPend = (c.saldo_pendiente != null) ? Number(c.saldo_pendiente) : Number(c.monto);
         var isCerrada = c.estado === 'saldado' || sPend <= 0.001;
@@ -1192,12 +1194,19 @@
         opt.text = nomComp + (isCerrada ? ' [✔ Ya Saldada]' : ' [Saldo: $' + sPend.toFixed(2) + ']');
         opt.dataset.saldo = sPend;
         opt.disabled = isCerrada;
+        if (cargoPreId && String(c.id) === String(cargoPreId)) {
+          opt.selected = true;
+          cargoSeleccionadoObj = c;
+        }
         sel.appendChild(opt);
       });
 
-      if (cargoPreId) {
-        sel.value = String(cargoPreId);
-      }
+      // LÓGICA DE MONTO SUGERIDO INTELIGENTE: Nunca sugerir más de lo que debe la factura!
+      var saldoRealFactura = cargoSeleccionadoObj ? ((cargoSeleccionadoObj.saldo_pendiente != null) ? Number(cargoSeleccionadoObj.saldo_pendiente) : Number(cargoSeleccionadoObj.monto)) : 999999;
+      var valorFinalSugerido = montoSugerido !== undefined && montoSugerido !== null ? Math.min(Number(montoSugerido), saldoRealFactura) : (saldoRealFactura < 999999 ? saldoRealFactura : '');
+
+      document.getElementById('abono-monto').value = (valorFinalSugerido > 0) ? Number(valorFinalSugerido).toFixed(2) : '';
+
       verificarExcedenteAbono();
       document.getElementById('modal-abono').classList.add('active');
     }
@@ -1296,17 +1305,34 @@
                   desglose.excedente = { cargo_id: null, monto: exc, a_favor: exc };
                 }
               }
+
+              // AUTO-CUMPLIR COMPROMISOS: Si la factura quedó saldada al 100%, todos sus compromisos quedan CUMPLIDOS!
+              if (cargoActualizado.saldo_pendiente <= 0.001) {
+                cacheCompromisos.forEach(function(cp) {
+                  if (String(cp.cargo_id) === String(cargoId)) {
+                    cp.estado = 'cumplido';
+                  }
+                });
+                if (navigator.onLine && db && !String(cargoId).startsWith('loc_')) {
+                  db.from('compromisos_pago').update({ estado: 'cumplido' }).eq('cargo_id', cargoId).then();
+                }
+              }
             }
           }
 
           var nuevoAbono = { id: 'loc_a_' + Date.now(), cargo_id: cargoId, monto: monto, fecha: fecha, tipo: tipo, nota: nota, foto_url: fotoBase64, desglose_imputacion: desglose };
           v.cobros_abonos.push(nuevoAbono);
 
+          // Si vino de un compromiso específico y la factura aún tiene saldo, evaluar cumplimiento
           if (compOrigenId) {
             var cp = cacheCompromisos.find(function(x) { return String(x.id) === String(compOrigenId); });
             if (cp) {
               cp.monto_cubierto = (Number(cp.monto_cubierto) || 0) + monto;
-              cp.estado = cp.monto_cubierto >= Number(cp.monto_pactado) ? 'cumplido' : 'parcial';
+              if (cargoActualizado && cargoActualizado.saldo_pendiente <= 0.001) {
+                cp.estado = 'cumplido';
+              } else {
+                cp.estado = cp.monto_cubierto >= Number(cp.monto_pactado) ? 'cumplido' : 'parcial';
+              }
               if (navigator.onLine && db && !String(compOrigenId).startsWith('loc_')) {
                 try { await db.from('compromisos_pago').update({ monto_cubierto: cp.monto_cubierto, estado: cp.estado }).eq('id', compOrigenId); } catch(e){}
               }
@@ -1560,8 +1586,11 @@
 
           if (cuotasDeFactura.length > 0) {
             cuotasDeFactura.forEach(function(cp) {
-              var esCumplido = cp.estado === 'cumplido';
+              // REGLA CLAVE: Si la factura ya fue liquidada al 100% (cSaldado), toda cuota queda CUMPLIDA automáticamente!
+              var esCumplido = cp.estado === 'cumplido' || cSaldado;
               var nReprog = (cp.historial_reprogramaciones && cp.historial_reprogramaciones.length) || 0;
+              var valorSugerirCuota = Math.min(Number(cp.monto_pactado), sPend);
+
               compromisosHtml += '<div class="compromiso-card-item">' +
                 '<div style="display:flex; justify-content:space-between; align-items:center;">' +
                   '<span>• Cuota: <b>$' + Number(cp.monto_pactado).toFixed(2) + '</b> (Pactada: ' + cp.fecha_pactada + ')</span>' +
@@ -1570,8 +1599,8 @@
                     '<button class="btn-del-mini" style="font-size:0.8rem; padding:1px 4px;" title="Eliminar cuota" onclick="borrarCompromiso(\'' + cp.id + '\')">✕</button>' +
                   '</div>' +
                 '</div>' +
-                (!esCumplido ? '<div style="display:flex; gap:6px; margin-top:4px;">' +
-                  '<button class="btn btn-success" style="font-size:0.68rem; padding:3px 6px;" onclick="abrirModalAbono(\'' + v.id + '\', \'' + c.id + '\', ' + Number(cp.monto_pactado) + ', \'' + cp.id + '\')">💵 Asentar Pago</button>' +
+                (!esCumplido && !cSaldado ? '<div style="display:flex; gap:6px; margin-top:4px;">' +
+                  '<button class="btn btn-success" style="font-size:0.68rem; padding:3px 6px;" onclick="abrirModalAbono(\'' + v.id + '\', \'' + c.id + '\', ' + valorSugerirCuota + ', \'' + cp.id + '\')">💵 Asentar Pago</button>' +
                   '<button class="btn btn-secondary" style="font-size:0.68rem; padding:3px 6px; background:#f59e0b; color:#000; font-weight:700;" onclick="abrirModalReprogramar(\'' + cp.id + '\')">⏳ Posponer</button>' +
                 '</div>' : '') +
               '</div>';
@@ -1696,7 +1725,9 @@
         cuotasPactadas.forEach(function(cp, idx) {
           cacheCompromisos.push({
             id: 'loc_cp_' + Date.now() + '_' + idx, tipo: 'pago', acreedor_id: idAcr, cargo_id: idCargo,
-            monto_pactado: cp.monto, monto_cubierto: 0, fecha_pactada: cp.fecha, estado: 'pendiente', historial_reprogramaciones: []
+            monto_pactado: cp.monto, monto_cubierto: 0, fecha_pactada: cp.fecha,
+            estado: saldoCargo <= 0.001 ? 'cumplido' : 'pendiente',
+            historial_reprogramaciones: []
           });
         });
 
@@ -1747,7 +1778,6 @@
       document.getElementById('modal-pago-id').value = acrId;
       document.getElementById('modal-pago-nombre').innerText = 'Acreedor: ' + p.nombre;
       document.getElementById('modal-pago-compromiso-origen-id').value = compOrigenId || '';
-      document.getElementById('cuota-monto').value = (montoSugerido !== undefined && montoSugerido !== null) ? Number(montoSugerido).toFixed(2) : '';
       document.getElementById('cuota-tipo').value = '';
       document.getElementById('cuota-nota').value = '';
       document.getElementById('box-excedente-pago').style.display = 'none';
@@ -1756,6 +1786,8 @@
 
       var sel = document.getElementById('cuota-cargo-id');
       sel.innerHTML = '<option value="">-- Saldo General (Sin vincular) --</option>';
+      var cargoSeleccionadoObj = null;
+
       (p.pagos_cargos || []).forEach(function(c) {
         var sPend = (c.saldo_pendiente != null) ? Number(c.saldo_pendiente) : Number(c.monto);
         var isCerrada = c.estado === 'saldado' || sPend <= 0.001;
@@ -1765,12 +1797,18 @@
         opt.text = nomComp + (isCerrada ? ' [✔ Cancelada]' : ' [Saldo: $' + sPend.toFixed(2) + ']');
         opt.dataset.saldo = sPend;
         opt.disabled = isCerrada;
+        if (cargoPreId && String(c.id) === String(cargoPreId)) {
+          opt.selected = true;
+          cargoSeleccionadoObj = c;
+        }
         sel.appendChild(opt);
       });
 
-      if (cargoPreId) {
-        sel.value = String(cargoPreId);
-      }
+      var saldoRealFactura = cargoSeleccionadoObj ? ((cargoSeleccionadoObj.saldo_pendiente != null) ? Number(cargoSeleccionadoObj.saldo_pendiente) : Number(cargoSeleccionadoObj.monto)) : 999999;
+      var valorFinalSugerido = montoSugerido !== undefined && montoSugerido !== null ? Math.min(Number(montoSugerido), saldoRealFactura) : (saldoRealFactura < 999999 ? saldoRealFactura : '');
+
+      document.getElementById('cuota-monto').value = (valorFinalSugerido > 0) ? Number(valorFinalSugerido).toFixed(2) : '';
+
       verificarExcedentePago();
       document.getElementById('modal-pago-cuota').classList.add('active');
     }
@@ -1865,6 +1903,17 @@
                   desglose.excedente = { cargo_id: null, monto: exc, a_favor: exc };
                 }
               }
+
+              if (cargoActualizado.saldo_pendiente <= 0.001) {
+                cacheCompromisos.forEach(function(cp) {
+                  if (String(cp.cargo_id) === String(cargoId)) {
+                    cp.estado = 'cumplido';
+                  }
+                });
+                if (navigator.onLine && db && !String(cargoId).startsWith('loc_')) {
+                  db.from('compromisos_pago').update({ estado: 'cumplido' }).eq('cargo_id', cargoId).then();
+                }
+              }
             }
           }
 
@@ -1875,7 +1924,11 @@
             var cp = cacheCompromisos.find(function(x) { return String(x.id) === String(compOrigenId); });
             if (cp) {
               cp.monto_cubierto = (Number(cp.monto_cubierto) || 0) + monto;
-              cp.estado = cp.monto_cubierto >= Number(cp.monto_pactado) ? 'cumplido' : 'parcial';
+              if (cargoActualizado && cargoActualizado.saldo_pendiente <= 0.001) {
+                cp.estado = 'cumplido';
+              } else {
+                cp.estado = cp.monto_cubierto >= Number(cp.monto_pactado) ? 'cumplido' : 'parcial';
+              }
               if (navigator.onLine && db && !String(compOrigenId).startsWith('loc_')) {
                 try { await db.from('compromisos_pago').update({ monto_cubierto: cp.monto_cubierto, estado: cp.estado }).eq('id', compOrigenId); } catch(e){}
               }
@@ -1998,6 +2051,9 @@
               if (ab.desglose_imputacion.primario && String(ab.desglose_imputacion.primario.cargo_id) === String(c.id)) {
                 abonosDeEstaFactura.push({ fecha: ab.fecha, tipo: ab.tipo, monto: ab.desglose_imputacion.primario.monto });
               }
+              if (ab.desglose_imputacion.excedente && String(ab.desglose_imputacion.excedente.cargo_id) === String(c.id)) {
+                abonosDeEstaFactura.push({ fecha: ab.fecha, tipo: ab.tipo, monto: ab.desglose_imputacion.excedente.monto, esExc: true });
+              }
             } else if (String(ab.cargo_id) === String(c.id)) {
               abonosDeEstaFactura.push({ fecha: ab.fecha, tipo: ab.tipo, monto: ab.monto });
             }
@@ -2022,8 +2078,10 @@
 
           if (cuotasDeFactura.length > 0) {
             cuotasDeFactura.forEach(function(cp) {
-              var esCumplido = cp.estado === 'cumplido';
+              var esCumplido = cp.estado === 'cumplido' || cCancelado;
               var nReprog = (cp.historial_reprogramaciones && cp.historial_reprogramaciones.length) || 0;
+              var valorSugerirCuota = Math.min(Number(cp.monto_pactado), sPend);
+
               compromisosHtml += '<div class="compromiso-card-item">' +
                 '<div style="display:flex; justify-content:space-between; align-items:center;">' +
                   '<span>• Cuota: <b>$' + Number(cp.monto_pactado).toFixed(2) + '</b> (Pactada: ' + cp.fecha_pactada + ')</span>' +
@@ -2032,8 +2090,8 @@
                     '<button class="btn-del-mini" style="font-size:0.8rem; padding:1px 4px;" title="Eliminar cuota" onclick="borrarCompromiso(\'' + cp.id + '\')">✕</button>' +
                   '</div>' +
                 '</div>' +
-                (!esCumplido ? '<div style="display:flex; gap:6px; margin-top:4px;">' +
-                  '<button class="btn btn-success" style="font-size:0.68rem; padding:3px 6px;" onclick="abrirModalPagoCuota(\'' + p.id + '\', \'' + c.id + '\', ' + Number(cp.monto_pactado) + ', \'' + cp.id + '\')">💵 Asentar Pago</button>' +
+                (!esCumplido && !cCancelado ? '<div style="display:flex; gap:6px; margin-top:4px;">' +
+                  '<button class="btn btn-success" style="font-size:0.68rem; padding:3px 6px;" onclick="abrirModalPagoCuota(\'' + p.id + '\', \'' + c.id + '\', ' + valorSugerirCuota + ', \'' + cp.id + '\')">💵 Asentar Pago</button>' +
                   '<button class="btn btn-secondary" style="font-size:0.68rem; padding:3px 6px; background:#f59e0b; color:#000; font-weight:700;" onclick="abrirModalReprogramar(\'' + cp.id + '\')">⏳ Prórroga</button>' +
                 '</div>' : '') +
               '</div>';
