@@ -1,6 +1,105 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+<script>
+// --- MOTOR AUTOMÁTICO DE COLA OFFLINE (OUTBOX) RAIET SUITE ---
+(function() {
+  const _origFetch = window.fetch;
+
+  function headersToObj(headers) {
+    if (!headers) return {};
+    if (headers instanceof Headers) {
+      const obj = {};
+      headers.forEach((v, k) => { obj[k] = v; });
+      return obj;
+    }
+    return headers;
+  }
+
+  function encolarOffline(url, init) {
+    try {
+      const cola = JSON.parse(localStorage.getItem('raiet_cola_offline') || '[]');
+      cola.push({
+        url: typeof url === 'string' ? url : url.url,
+        method: (init?.method || 'GET').toUpperCase(),
+        headers: headersToObj(init?.headers),
+        body: init?.body || null,
+        fecha: Date.now()
+      });
+      localStorage.setItem('raiet_cola_offline', JSON.stringify(cola));
+      console.log('📦 [Offline] Operación guardada en cola local:', init?.method, url);
+    } catch (e) {
+      console.error('Error guardando en cola offline:', e);
+    }
+  }
+
+  // Interceptar todas las peticiones a Supabase
+  window.fetch = async function(resource, init) {
+    const url = typeof resource === 'string' ? resource : resource?.url;
+    const method = (init?.method || 'GET').toUpperCase();
+    const esMutacionSupabase = url && url.includes('.supabase.co/rest/v1/') && (method === 'DELETE' || method === 'POST' || method === 'PATCH');
+
+    if (esMutacionSupabase) {
+      // Si estamos sin conexión
+      if (!navigator.onLine) {
+        encolarOffline(url, init);
+        return new Response(JSON.stringify([]), {
+          status: 200,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+
+      // Si estamos online pero la señal falla en ese instante
+      try {
+        return await _origFetch(resource, init);
+      } catch (err) {
+        encolarOffline(url, init);
+        return new Response(JSON.stringify([]), {
+          status: 200,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+    }
+
+    return _origFetch(resource, init);
+  };
+
+  // Al recuperar internet, vaciar la cola y borrar definitivamente en Supabase
+  window.addEventListener('online', async () => {
+    const raw = localStorage.getItem('raiet_cola_offline');
+    if (!raw) return;
+    const cola = JSON.parse(raw);
+    if (!cola || cola.length === 0) return;
+
+    console.log(`🔄 [Sync] Conexión recuperada. Enviando ${cola.length} pendientes a Supabase...`);
+    const pendientes = [];
+
+    for (const item of cola) {
+      try {
+        const resp = await _origFetch(item.url, {
+          method: item.method,
+          headers: item.headers,
+          body: item.body
+        });
+        if (!resp.ok && resp.status >= 500) {
+          pendientes.push(item);
+        }
+      } catch (e) {
+        pendientes.push(item);
+      }
+    }
+
+    localStorage.setItem('raiet_cola_offline', JSON.stringify(pendientes));
+
+    if (pendientes.length === 0) {
+      console.log('✅ [Sync] Todo sincronizado con Supabase.');
+      if (typeof cargarDatos === 'function') setTimeout(cargarDatos, 600);
+      else if (typeof cargarTodo === 'function') setTimeout(cargarTodo, 600);
+      else if (typeof init === 'function') setTimeout(init, 600);
+    }
+  });
+})();
+</script>  
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Raiet Suite DEV</title>
