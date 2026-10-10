@@ -40,7 +40,6 @@
     const esMutacionSupabase = url && url.includes('.supabase.co/rest/v1/') && (method === 'DELETE' || method === 'POST' || method === 'PATCH');
 
     if (esMutacionSupabase) {
-      // Si estamos sin conexión
       if (!navigator.onLine) {
         encolarOffline(url, init);
         return new Response(JSON.stringify([]), {
@@ -49,7 +48,6 @@
         });
       }
 
-      // Si estamos online pero la señal falla en ese instante
       try {
         return await _origFetch(resource, init);
       } catch (err) {
@@ -64,7 +62,6 @@
     return _origFetch(resource, init);
   };
 
-  // Al recuperar internet, vaciar la cola y borrar definitivamente en Supabase
   window.addEventListener('online', async () => {
     const raw = localStorage.getItem('raiet_cola_offline');
     if (!raw) return;
@@ -428,6 +425,15 @@
       <h3>Registrar Abono</h3>
       <p id="modal-cliente-nombre" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;"></p>
       <input type="hidden" id="modal-venta-id">
+      
+      <!-- SELECTOR DE CUENTA A IMPUTAR -->
+      <div class="form-group">
+        <label>Aplicar a Cuenta / Factura</label>
+        <select id="abono-cargo-id" onchange="autoCompletarMontoAbono()">
+          <option value="">-- Saldo General (Sin vincular) --</option>
+        </select>
+      </div>
+
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
         <div class="form-group"><label>Monto ($)</label><input type="number" step="0.01" id="abono-monto"></div>
         <div class="form-group"><label>Fecha Abono</label><input type="date" id="abono-fecha"></div>
@@ -466,6 +472,15 @@
       <h3>Registrar Pago Realizado</h3>
       <p id="modal-pago-nombre" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;"></p>
       <input type="hidden" id="modal-pago-id">
+      
+      <!-- SELECTOR DE OBLIGACIÓN A IMPUTAR -->
+      <div class="form-group">
+        <label>Aplicar a Obligación / Factura</label>
+        <select id="cuota-cargo-id" onchange="autoCompletarMontoPago()">
+          <option value="">-- Saldo General (Sin vincular) --</option>
+        </select>
+      </div>
+
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
         <div class="form-group"><label>Monto Pagado ($)</label><input type="number" step="0.01" id="cuota-monto"></div>
         <div class="form-group"><label>Fecha de Pago</label><input type="date" id="cuota-fecha"></div>
@@ -953,7 +968,7 @@
       procesarArchivoImagen(document.getElementById('cobro-foto'), async function(fotoBase64) {
         var nuevoCli = {
           id: 'loc_' + Date.now(), nombre: nombre, telefono: tel,
-          cobros_cargos: [{ id: 'loc_c_' + Date.now(), concepto: concepto, monto: total, fecha: fecha, foto_url: fotoBase64 }],
+          cobros_cargos: [{ id: 'loc_c_' + Date.now(), concepto: concepto, monto: total, saldo_pendiente: total, estado: 'pendiente', fecha: fecha, foto_url: fotoBase64 }],
           cobros_abonos: []
         };
         cacheCobros.unshift(nuevoCli);
@@ -972,7 +987,7 @@
             var c = await db.from('clientes').insert({ nombre: nombre, telefono: tel }).select().single();
             if (c.data) {
               nuevoCli.id = c.data.id;
-              var cg = await db.from('cobros_cargos').insert({ cliente_id: c.data.id, concepto: concepto, monto: total, fecha: fecha, foto_url: fotoBase64 }).select().single();
+              var cg = await db.from('cobros_cargos').insert({ cliente_id: c.data.id, concepto: concepto, monto: total, saldo_pendiente: total, estado: 'pendiente', fecha: fecha, foto_url: fotoBase64 }).select().single();
               if (cg.data && nuevoCli.cobros_cargos[0]) nuevoCli.cobros_cargos[0].id = cg.data.id;
               guardarMemoriaLocal();
             }
@@ -991,11 +1006,35 @@
       document.getElementById('abono-nota').value = '';
       var fInput = document.getElementById('abono-foto'); if (fInput) fInput.value = '';
       setHoy('abono-fecha');
+
+      // Cargar lista de facturas pendientes en el selector
+      var sel = document.getElementById('abono-cargo-id');
+      sel.innerHTML = '<option value="">-- Saldo General (Sin vincular) --</option>';
+      (v.cobros_cargos || []).forEach(function(c) {
+        var sPend = (c.saldo_pendiente != null) ? Number(c.saldo_pendiente) : Number(c.monto);
+        var isCerrada = c.estado === 'saldado' || sPend <= 0.001;
+        var opt = document.createElement('option');
+        opt.value = c.id;
+        opt.text = c.concepto + (isCerrada ? ' [✔ Ya Saldada]' : ' [Saldo: $' + sPend.toFixed(2) + ']');
+        opt.dataset.saldo = sPend;
+        opt.disabled = isCerrada;
+        sel.appendChild(opt);
+      });
+
       document.getElementById('modal-abono').classList.add('active');
+    }
+
+    function autoCompletarMontoAbono() {
+      var sel = document.getElementById('abono-cargo-id');
+      var opt = sel.options[sel.selectedIndex];
+      if (opt && opt.dataset.saldo && Number(opt.dataset.saldo) > 0) {
+        document.getElementById('abono-monto').value = Number(opt.dataset.saldo).toFixed(2);
+      }
     }
 
     async function confirmarAbono() {
       var id = document.getElementById('modal-venta-id').value;
+      var cargoId = document.getElementById('abono-cargo-id').value || null;
       var monto = parseFloat(document.getElementById('abono-monto').value);
       var fecha = document.getElementById('abono-fecha').value || hoyStr;
       var tipo = document.getElementById('abono-tipo').value.trim() || 'Abono';
@@ -1004,10 +1043,23 @@
 
       procesarArchivoImagen(document.getElementById('abono-foto'), async function(fotoBase64) {
         var v = cacheCobros.find(function(x) { return String(x.id) === String(id); });
-        var nuevoAbono = { id: 'loc_a_' + Date.now(), monto: monto, fecha: fecha, tipo: tipo, nota: nota, foto_url: fotoBase64 };
+        var nuevoAbono = { id: 'loc_a_' + Date.now(), cargo_id: cargoId, monto: monto, fecha: fecha, tipo: tipo, nota: nota, foto_url: fotoBase64 };
+        
+        var cargoActualizado = null;
         if (v) {
           if (!v.cobros_abonos) v.cobros_abonos = [];
           v.cobros_abonos.push(nuevoAbono);
+
+          // Si el abono se aplicó a una factura específica, rebajar su saldo individual
+          if (cargoId) {
+            cargoActualizado = (v.cobros_cargos || []).find(function(c) { return String(c.id) === String(cargoId); });
+            if (cargoActualizado) {
+              var sActual = (cargoActualizado.saldo_pendiente != null) ? Number(cargoActualizado.saldo_pendiente) : Number(cargoActualizado.monto);
+              cargoActualizado.saldo_pendiente = Math.max(0, sActual - monto);
+              cargoActualizado.estado = cargoActualizado.saldo_pendiente <= 0.001 ? 'saldado' : 'parcial';
+            }
+          }
+
           guardarMemoriaLocal();
           dibujarCobros();
         }
@@ -1015,8 +1067,13 @@
 
         if (navigator.onLine && db && !String(id).startsWith('loc_')) {
           try {
-            var ins = await db.from('cobros_abonos').insert({ cliente_id: id, monto: monto, fecha: fecha, tipo: tipo, nota: nota, foto_url: fotoBase64 }).select().single();
+            var ins = await db.from('cobros_abonos').insert({ cliente_id: id, cargo_id: cargoId, monto: monto, fecha: fecha, tipo: tipo, nota: nota, foto_url: fotoBase64 }).select().single();
             if (ins.data) { nuevoAbono.id = ins.data.id; guardarMemoriaLocal(); }
+
+            // Actualizar factura en Supabase
+            if (cargoActualizado && !String(cargoActualizado.id).startsWith('loc_')) {
+              await db.from('cobros_cargos').update({ saldo_pendiente: cargoActualizado.saldo_pendiente, estado: cargoActualizado.estado }).eq('id', cargoActualizado.id);
+            }
           } catch(e) {}
         }
       });
@@ -1043,7 +1100,7 @@
 
       procesarArchivoImagen(document.getElementById('cargo-foto'), async function(fotoBase64) {
         var v = cacheCobros.find(function(x) { return String(x.id) === String(id); });
-        var nuevoCargo = { id: 'loc_cg_' + Date.now(), concepto: concepto, monto: monto, fecha: fecha, foto_url: fotoBase64 };
+        var nuevoCargo = { id: 'loc_cg_' + Date.now(), concepto: concepto, monto: monto, saldo_pendiente: monto, estado: 'pendiente', fecha: fecha, foto_url: fotoBase64 };
         if (v) {
           if (!v.cobros_cargos) v.cobros_cargos = [];
           v.cobros_cargos.push(nuevoCargo);
@@ -1054,7 +1111,7 @@
 
         if (navigator.onLine && db && !String(id).startsWith('loc_')) {
           try {
-            var ins = await db.from('cobros_cargos').insert({ cliente_id: id, concepto: concepto, monto: monto, fecha: fecha, foto_url: fotoBase64 }).select().single();
+            var ins = await db.from('cobros_cargos').insert({ cliente_id: id, concepto: concepto, monto: monto, saldo_pendiente: monto, estado: 'pendiente', fecha: fecha, foto_url: fotoBase64 }).select().single();
             if (ins.data) { nuevoCargo.id = ins.data.id; guardarMemoriaLocal(); }
           } catch(e) {}
         }
@@ -1074,9 +1131,30 @@
 
     async function borrarAbono(abonoId) {
       if (!confirm('¿Anular este abono?')) return;
+      var abonoABorrar = null;
+      var clienteAfectado = null;
+
       cacheCobros.forEach(function(cli) {
-        if (cli.cobros_abonos) cli.cobros_abonos = cli.cobros_abonos.filter(function(a) { return String(a.id) !== String(abonoId); });
+        if (cli.cobros_abonos) {
+          var found = cli.cobros_abonos.find(function(a) { return String(a.id) === String(abonoId); });
+          if (found) { abonoABorrar = found; clienteAfectado = cli; }
+          cli.cobros_abonos = cli.cobros_abonos.filter(function(a) { return String(a.id) !== String(abonoId); });
+        }
       });
+
+      // Si restauramos el abono a una factura específica, revertir su saldo
+      if (abonoABorrar && abonoABorrar.cargo_id && clienteAfectado) {
+        var cg = (clienteAfectado.cobros_cargos || []).find(function(c) { return String(c.id) === String(abonoABorrar.cargo_id); });
+        if (cg) {
+          var sAct = (cg.saldo_pendiente != null) ? Number(cg.saldo_pendiente) : 0;
+          cg.saldo_pendiente = Math.min(Number(cg.monto), sAct + Number(abonoABorrar.monto));
+          cg.estado = cg.saldo_pendiente <= 0.001 ? 'saldado' : (cg.saldo_pendiente < Number(cg.monto) ? 'parcial' : 'pendiente');
+          if (navigator.onLine && db && !String(cg.id).startsWith('loc_')) {
+            try { await db.from('cobros_cargos').update({ saldo_pendiente: cg.saldo_pendiente, estado: cg.estado }).eq('id', cg.id); } catch(e){}
+          }
+        }
+      }
+
       guardarMemoriaLocal(); dibujarCobros();
       if (navigator.onLine && db && !String(abonoId).startsWith('loc_')) {
         try { await db.from('cobros_abonos').delete().eq('id', abonoId); } catch(e){}
@@ -1149,9 +1227,14 @@
 
         for (var cIdx = 0; cIdx < cargos.length; cIdx++) {
           var c = cargos[cIdx];
-          html += '<div class="ledger-item">' +
-            '<div class="det"><b>' + c.concepto + '</b><span style="font-size:0.7rem; color:var(--text-muted);">Vence: ' + (c.fecha || '-') + '</span>' +
-            (c.foto_url ? '<button class="thumb-btn" onclick="abrirVisor(\'' + c.foto_url + '\')">🧾 Ver Factura</button>' : '') +
+          var sPend = (c.saldo_pendiente != null) ? Number(c.saldo_pendiente) : Number(c.monto);
+          var cSaldado = (c.estado === 'saldado') || (sPend <= 0.001);
+
+          html += '<div class="ledger-item" style="' + (cSaldado ? 'opacity:0.7; border-left:3px solid var(--success);' : '') + '">' +
+            '<div class="det">' +
+              '<b>' + c.concepto + (cSaldado ? ' <span class="badge badge-done" style="font-size:0.6rem; vertical-align:middle;">✔ SALDADA</span>' : '') + '</b>' +
+              '<span style="font-size:0.7rem; color:var(--text-muted);">Vence: ' + (c.fecha || '-') + (cSaldado ? '' : ' • Saldo: $' + sPend.toFixed(2)) + '</span>' +
+              (c.foto_url ? '<button class="thumb-btn" onclick="abrirVisor(\'' + c.foto_url + '\')">🧾 Ver Factura</button>' : '') +
             '</div>' +
             '<div class="actions"><b style="color:#fff;">$' + Number(c.monto).toFixed(2) + '</b><button class="btn-del-mini" title="Anular cargo" onclick="borrarCargo(\'' + c.id + '\')">✕</button></div>' +
           '</div>';
@@ -1164,10 +1247,14 @@
 
         for (var aIdx = 0; aIdx < abonos.length; aIdx++) {
           var a = abonos[aIdx];
+          var cgAfectado = a.cargo_id ? cargos.find(function(c) { return String(c.id) === String(a.cargo_id); }) : null;
+
           html += '<div class="ledger-item">' +
-            '<div class="det"><span>• ' + (a.fecha || hoyStr) + ' (' + (a.tipo || 'Abono') + ')</span>' +
-            (a.nota ? '<span style="font-size:0.7rem; color:#94a3b8;">💬 ' + a.nota + '</span>' : '') +
-            (a.foto_url ? '<button class="thumb-btn" onclick="abrirVisor(\'' + a.foto_url + '\')">🧾 Ver Recibo</button>' : '') +
+            '<div class="det">' +
+              '<span>• ' + (a.fecha || hoyStr) + ' (' + (a.tipo || 'Abono') + ')</span>' +
+              (cgAfectado ? '<span style="font-size:0.72rem; color:var(--accent);">🎯 Aplicado a: <b>' + cgAfectado.concepto + '</b></span>' : '') +
+              (a.nota ? '<span style="font-size:0.7rem; color:#94a3b8;">💬 ' + a.nota + '</span>' : '') +
+              (a.foto_url ? '<button class="thumb-btn" onclick="abrirVisor(\'' + a.foto_url + '\')">🧾 Ver Recibo</button>' : '') +
             '</div>' +
             '<div class="actions"><b style="color:var(--success);">+$' + Number(a.monto).toFixed(2) + '</b><button class="btn-del-mini" title="Anular abono" onclick="borrarAbono(\'' + a.id + '\')">✕</button></div>' +
           '</div>';
@@ -1198,12 +1285,12 @@
       var detalle = document.getElementById('pago-detalle').value.trim() || 'Deuda Inicial';
       var monto = parseFloat(document.getElementById('pago-monto').value);
       var fecha = document.getElementById('pago-fecha').value || hoyStr;
-      if (!nombre || isNaN(monto) || monto <= 0) return alert('Ingresa acreedor y monto válido.');
+      if (!nombre || isNaN(monto) || total <= 0) return alert('Ingresa acreedor y monto válido.');
 
       procesarArchivoImagen(document.getElementById('pago-foto'), async function(fotoBase64) {
         var nuevoAcreedor = {
           id: 'loc_p_' + Date.now(), nombre: nombre, detalle: detalle,
-          pagos_cargos: [{ id: 'loc_pc_' + Date.now(), concepto: detalle, monto: monto, fecha: fecha, foto_url: fotoBase64 }],
+          pagos_cargos: [{ id: 'loc_pc_' + Date.now(), concepto: detalle, monto: monto, saldo_pendiente: monto, estado: 'pendiente', fecha: fecha, foto_url: fotoBase64 }],
           pagos_abonos: []
         };
         cachePagos.unshift(nuevoAcreedor);
@@ -1221,7 +1308,7 @@
             var a = await db.from('acreedores').insert({ nombre: nombre, detalle: detalle }).select().single();
             if (a.data) {
               nuevoAcreedor.id = a.data.id;
-              var pc = await db.from('pagos_cargos').insert({ acreedor_id: a.data.id, concepto: detalle, monto: monto, fecha: fecha, foto_url: fotoBase64 }).select().single();
+              var pc = await db.from('pagos_cargos').insert({ acreedor_id: a.data.id, concepto: detalle, monto: monto, saldo_pendiente: monto, estado: 'pendiente', fecha: fecha, foto_url: fotoBase64 }).select().single();
               if (pc.data && nuevoAcreedor.pagos_cargos[0]) nuevoAcreedor.pagos_cargos[0].id = pc.data.id;
               guardarMemoriaLocal();
             }
@@ -1251,7 +1338,7 @@
 
       procesarArchivoImagen(document.getElementById('cargo-pagar-foto'), async function(fotoBase64) {
         var p = cachePagos.find(function(x) { return String(x.id) === String(id); });
-        var nuevoCargo = { id: 'loc_pc_' + Date.now(), concepto: concepto, monto: monto, fecha: fecha, foto_url: fotoBase64 };
+        var nuevoCargo = { id: 'loc_pc_' + Date.now(), concepto: concepto, monto: monto, saldo_pendiente: monto, estado: 'pendiente', fecha: fecha, foto_url: fotoBase64 };
         if (p) {
           if (!p.pagos_cargos) p.pagos_cargos = [];
           p.pagos_cargos.push(nuevoCargo);
@@ -1262,7 +1349,7 @@
 
         if (navigator.onLine && db && !String(id).startsWith('loc_')) {
           try {
-            var ins = await db.from('pagos_cargos').insert({ acreedor_id: id, concepto: concepto, monto: monto, fecha: fecha, foto_url: fotoBase64 }).select().single();
+            var ins = await db.from('pagos_cargos').insert({ acreedor_id: id, concepto: concepto, monto: monto, saldo_pendiente: monto, estado: 'pendiente', fecha: fecha, foto_url: fotoBase64 }).select().single();
             if (ins.data) { nuevoCargo.id = ins.data.id; guardarMemoriaLocal(); }
           } catch(e) {}
         }
@@ -1279,11 +1366,35 @@
       document.getElementById('cuota-nota').value = '';
       var fInput = document.getElementById('cuota-foto'); if (fInput) fInput.value = '';
       setHoy('cuota-fecha');
+
+      // Cargar obligaciones pendientes en el selector
+      var sel = document.getElementById('cuota-cargo-id');
+      sel.innerHTML = '<option value="">-- Saldo General (Sin vincular) --</option>';
+      (p.pagos_cargos || []).forEach(function(c) {
+        var sPend = (c.saldo_pendiente != null) ? Number(c.saldo_pendiente) : Number(c.monto);
+        var isCerrada = c.estado === 'saldado' || sPend <= 0.001;
+        var opt = document.createElement('option');
+        opt.value = c.id;
+        opt.text = c.concepto + (isCerrada ? ' [✔ Cancelada]' : ' [Saldo: $' + sPend.toFixed(2) + ']');
+        opt.dataset.saldo = sPend;
+        opt.disabled = isCerrada;
+        sel.appendChild(opt);
+      });
+
       document.getElementById('modal-pago-cuota').classList.add('active');
+    }
+
+    function autoCompletarMontoPago() {
+      var sel = document.getElementById('cuota-cargo-id');
+      var opt = sel.options[sel.selectedIndex];
+      if (opt && opt.dataset.saldo && Number(opt.dataset.saldo) > 0) {
+        document.getElementById('cuota-monto').value = Number(opt.dataset.saldo).toFixed(2);
+      }
     }
 
     async function confirmarPagoCuota() {
       var id = document.getElementById('modal-pago-id').value;
+      var cargoId = document.getElementById('cuota-cargo-id').value || null;
       var monto = parseFloat(document.getElementById('cuota-monto').value);
       var fecha = document.getElementById('cuota-fecha').value || hoyStr;
       var tipo = document.getElementById('cuota-tipo').value.trim() || 'Pago';
@@ -1292,10 +1403,22 @@
 
       procesarArchivoImagen(document.getElementById('cuota-foto'), async function(fotoBase64) {
         var p = cachePagos.find(function(x) { return String(x.id) === String(id); });
-        var nuevoAbono = { id: 'loc_pa_' + Date.now(), monto: monto, fecha: fecha, tipo: tipo, nota: nota, foto_url: fotoBase64 };
+        var nuevoAbono = { id: 'loc_pa_' + Date.now(), cargo_id: cargoId, monto: monto, fecha: fecha, tipo: tipo, nota: nota, foto_url: fotoBase64 };
+        
+        var cargoActualizado = null;
         if (p) {
           if (!p.pagos_abonos) p.pagos_abonos = [];
           p.pagos_abonos.push(nuevoAbono);
+
+          if (cargoId) {
+            cargoActualizado = (p.pagos_cargos || []).find(function(c) { return String(c.id) === String(cargoId); });
+            if (cargoActualizado) {
+              var sActual = (cargoActualizado.saldo_pendiente != null) ? Number(cargoActualizado.saldo_pendiente) : Number(cargoActualizado.monto);
+              cargoActualizado.saldo_pendiente = Math.max(0, sActual - monto);
+              cargoActualizado.estado = cargoActualizado.saldo_pendiente <= 0.001 ? 'saldado' : 'parcial';
+            }
+          }
+
           guardarMemoriaLocal();
           dibujarPagos();
         }
@@ -1303,8 +1426,12 @@
 
         if (navigator.onLine && db && !String(id).startsWith('loc_')) {
           try {
-            var ins = await db.from('pagos_abonos').insert({ acreedor_id: id, monto: monto, fecha: fecha, tipo: tipo, nota: nota, foto_url: fotoBase64 }).select().single();
+            var ins = await db.from('pagos_abonos').insert({ acreedor_id: id, cargo_id: cargoId, monto: monto, fecha: fecha, tipo: tipo, nota: nota, foto_url: fotoBase64 }).select().single();
             if (ins.data) { nuevoAbono.id = ins.data.id; guardarMemoriaLocal(); }
+
+            if (cargoActualizado && !String(cargoActualizado.id).startsWith('loc_')) {
+              await db.from('pagos_cargos').update({ saldo_pendiente: cargoActualizado.saldo_pendiente, estado: cargoActualizado.estado }).eq('id', cargoActualizado.id);
+            }
           } catch(e) {}
         }
       });
@@ -1323,9 +1450,29 @@
 
     async function borrarAbonoPagar(abonoId) {
       if (!confirm('¿Anular este pago?')) return;
+      var abonoABorrar = null;
+      var acreedorAfectado = null;
+
       cachePagos.forEach(function(p) {
-        if (p.pagos_abonos) p.pagos_abonos = p.pagos_abonos.filter(function(a) { return String(a.id) !== String(abonoId); });
+        if (p.pagos_abonos) {
+          var found = p.pagos_abonos.find(function(a) { return String(a.id) === String(abonoId); });
+          if (found) { abonoABorrar = found; acreedorAfectado = p; }
+          p.pagos_abonos = p.pagos_abonos.filter(function(a) { return String(a.id) !== String(abonoId); });
+        }
       });
+
+      if (abonoABorrar && abonoABorrar.cargo_id && acreedorAfectado) {
+        var cg = (acreedorAfectado.pagos_cargos || []).find(function(c) { return String(c.id) === String(abonoABorrar.cargo_id); });
+        if (cg) {
+          var sAct = (cg.saldo_pendiente != null) ? Number(cg.saldo_pendiente) : 0;
+          cg.saldo_pendiente = Math.min(Number(cg.monto), sAct + Number(abonoABorrar.monto));
+          cg.estado = cg.saldo_pendiente <= 0.001 ? 'saldado' : (cg.saldo_pendiente < Number(cg.monto) ? 'parcial' : 'pendiente');
+          if (navigator.onLine && db && !String(cg.id).startsWith('loc_')) {
+            try { await db.from('pagos_cargos').update({ saldo_pendiente: cg.saldo_pendiente, estado: cg.estado }).eq('id', cg.id); } catch(e){}
+          }
+        }
+      }
+
       guardarMemoriaLocal(); dibujarPagos();
       if (navigator.onLine && db && !String(abonoId).startsWith('loc_')) {
         try { await db.from('pagos_abonos').delete().eq('id', abonoId); } catch(e){}
@@ -1398,9 +1545,14 @@
 
         for (var cIdx = 0; cIdx < cargos.length; cIdx++) {
           var c = cargos[cIdx];
-          html += '<div class="ledger-item">' +
-            '<div class="det"><b>' + c.concepto + '</b><span style="font-size:0.7rem; color:var(--text-muted);">Vence: ' + (c.fecha || '-') + '</span>' +
-            (c.foto_url ? '<button class="thumb-btn" onclick="abrirVisor(\'' + c.foto_url + '\')">🧾 Ver Factura</button>' : '') +
+          var sPend = (c.saldo_pendiente != null) ? Number(c.saldo_pendiente) : Number(c.monto);
+          var cCancelado = (c.estado === 'saldado') || (sPend <= 0.001);
+
+          html += '<div class="ledger-item" style="' + (cCancelado ? 'opacity:0.7; border-left:3px solid var(--success);' : '') + '">' +
+            '<div class="det">' +
+              '<b>' + c.concepto + (cCancelado ? ' <span class="badge badge-done" style="font-size:0.6rem; vertical-align:middle;">✔ CANCELADA</span>' : '') + '</b>' +
+              '<span style="font-size:0.7rem; color:var(--text-muted);">Vence: ' + (c.fecha || '-') + (cCancelado ? '' : ' • Saldo: $' + sPend.toFixed(2)) + '</span>' +
+              (c.foto_url ? '<button class="thumb-btn" onclick="abrirVisor(\'' + c.foto_url + '\')">🧾 Ver Factura</button>' : '') +
             '</div>' +
             '<div class="actions"><b style="color:#fff;">$' + Number(c.monto).toFixed(2) + '</b><button class="btn-del-mini" title="Anular obligación" onclick="borrarCargoPagar(\'' + c.id + '\')">✕</button></div>' +
           '</div>';
@@ -1413,10 +1565,14 @@
 
         for (var aIdx = 0; aIdx < abonos.length; aIdx++) {
           var a = abonos[aIdx];
+          var cgAfectado = a.cargo_id ? cargos.find(function(c) { return String(c.id) === String(a.cargo_id); }) : null;
+
           html += '<div class="ledger-item">' +
-            '<div class="det"><span>• ' + (a.fecha || hoyStr) + ' (' + (a.tipo || 'Pago') + ')</span>' +
-            (a.nota ? '<span style="font-size:0.7rem; color:#94a3b8;">💬 ' + a.nota + '</span>' : '') +
-            (a.foto_url ? '<button class="thumb-btn" onclick="abrirVisor(\'' + a.foto_url + '\')">🧾 Ver Recibo</button>' : '') +
+            '<div class="det">' +
+              '<span>• ' + (a.fecha || hoyStr) + ' (' + (a.tipo || 'Pago') + ')</span>' +
+              (cgAfectado ? '<span style="font-size:0.72rem; color:var(--accent);">🎯 Aplicado a: <b>' + cgAfectado.concepto + '</b></span>' : '') +
+              (a.nota ? '<span style="font-size:0.7rem; color:#94a3b8;">💬 ' + a.nota + '</span>' : '') +
+              (a.foto_url ? '<button class="thumb-btn" onclick="abrirVisor(\'' + a.foto_url + '\')">🧾 Ver Recibo</button>' : '') +
             '</div>' +
             '<div class="actions"><b style="color:var(--success);">-$' + Number(a.monto).toFixed(2) + '</b><button class="btn-del-mini" title="Anular pago" onclick="borrarAbonoPagar(\'' + a.id + '\')">✕</button></div>' +
           '</div>';
