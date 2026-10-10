@@ -215,10 +215,10 @@
     .factura-historial-box { margin-top: 6px; padding: 6px 8px; background: #080a10; border-radius: 6px; border-left: 2px solid var(--accent); display: flex; flex-direction: column; gap: 3px; }
     .factura-pago-line { font-size: 0.7rem; color: #cbd5e1; display: flex; justify-content: space-between; }
 
-    /* Cuotas y compromisos */
+    /* Plan de cuotas */
     .plan-cuotas-box { background: #0d121c; border: 1px solid var(--card-border); border-radius: 8px; padding: 10px; margin-top: 8px; }
-    .cuota-row-input { display: grid; grid-template-columns: 1fr 1fr auto; gap: 6px; align-items: center; margin-bottom: 6px; }
-    .compromiso-card-item { background: #080a10; border: 1px solid var(--card-border-subtle); border-radius: 6px; padding: 8px; margin-top: 5px; font-size: 0.74rem; display: flex; flex-direction: column; gap: 4px; }
+    .cuota-row-input { display: grid; grid-template-columns: 1.4fr 1.2fr auto; gap: 6px; align-items: center; margin-bottom: 6px; }
+    .compromiso-card-item { background: #080a10; border: 1px solid var(--card-border-subtle); border-radius: 6px; padding: 8px; margin-top: 5px; font-size: 0.74rem; display: flex; flex-direction: column; gap: 5px; }
 
     .hc-tabs { display: flex; gap: 6px; margin-bottom: 12px; background: var(--card-inner); padding: 4px; border-radius: 8px; border: 1px solid var(--card-border-subtle); }
     .hc-tab-btn { flex: 1; padding: 8px 4px; border: none; background: transparent; color: var(--text-muted); font-size: 0.75rem; font-weight: 700; border-radius: 6px; cursor: pointer; text-align: center; }
@@ -273,7 +273,7 @@
       <div id="lista-agenda"></div>
     </section>
 
-    <!-- 2. COBROS (FICHA COMERCIAL Y CUOTAS DINÁMICAS) -->
+    <!-- 2. COBROS -->
     <section id="tab-cobros" class="tab-content">
       <div class="card">
         <div style="display:grid; grid-template-columns: 2fr 1fr; gap: 8px;">
@@ -284,14 +284,14 @@
         <div style="background:var(--card-inner); padding:10px; border-radius:8px; border:1px solid var(--card-border-subtle); margin-bottom:12px;">
           <span style="font-size:0.75rem; color:var(--accent); font-weight:800; display:block; margin-bottom:8px;">EMISIÓN DE OBLIGACIÓN / FACTURA</span>
           <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-            <div class="form-group"><label>N° Comprobante / Factura</label><input type="text" id="cobro-num" placeholder="Ej. Fact. 001"></div>
+            <div class="form-group"><label>N° Comprobante / Factura</label><input type="text" id="cobro-num" placeholder="Ej. 001-001-10"></div>
             <div class="form-group"><label>Fecha Emisión</label><input type="date" id="cobro-emision"></div>
           </div>
-          <div class="form-group"><label>Concepto / Descripción</label><input type="text" id="cobro-concepto" placeholder="Ej. Tres trajes ejecutivos"></div>
+          <div class="form-group"><label>Concepto / Detalle</label><input type="text" id="cobro-concepto" placeholder="Ej. Ternos ejecutivos"></div>
           <div style="display:grid; grid-template-columns: 1fr 1fr 1.2fr; gap: 8px;">
             <div class="form-group"><label>Cantidad</label><input type="number" id="cobro-cant" value="1" oninput="calcularTotalCobro()"></div>
-            <div class="form-group"><label>Precio Unit. ($)</label><input type="number" step="0.01" id="cobro-punit" placeholder="250.00" oninput="calcularTotalCobro()"></div>
-            <div class="form-group"><label>Total ($)</label><input type="number" step="0.01" id="cobro-total" placeholder="250.00"></div>
+            <div class="form-group"><label>Precio Unit. ($)</label><input type="number" step="0.01" id="cobro-punit" placeholder="300.00" oninput="calcularTotalCobro()"></div>
+            <div class="form-group"><label>Total ($)</label><input type="number" step="0.01" id="cobro-total" placeholder="300.00"></div>
           </div>
           
           <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top:4px;">
@@ -301,10 +301,9 @@
           <div class="form-group"><label>Foto Factura / Contrato</label><input type="file" id="cobro-foto" accept="image/*"></div>
         </div>
 
-        <!-- GENERADOR DINÁMICO DE COMPROMISOS -->
         <div class="plan-cuotas-box">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-            <span style="font-size:0.72rem; color:#e2e8f0; font-weight:800;">📅 PLAN DE COMPROMISOS / CUOTAS</span>
+            <span style="font-size:0.72rem; color:#e2e8f0; font-weight:800;">📅 PLAN DE CUOTAS / ABONOS PROGRAMADOS</span>
             <button class="btn btn-secondary" style="padding:2px 8px; font-size:0.7rem;" onclick="agregarFilaCompromiso('contenedor-cuotas-cobro')">+ Cuota</button>
           </div>
           <div id="contenedor-cuotas-cobro"></div>
@@ -321,21 +320,21 @@
       <div id="lista-cobros"></div>
     </section>
 
-    <!-- 3. CUENTAS POR PAGAR (PROVEEDORES) -->
+    <!-- 3. CUENTAS POR PAGAR -->
     <section id="tab-pagos" class="tab-content">
       <div class="card">
         <div style="display:grid; grid-template-columns: 2fr 1fr; gap: 8px;">
-          <div class="form-group"><label>Acreedor / Proveedor</label><input type="text" id="pago-concepto" placeholder="Ej. Distribuidor Andino"></div>
+          <div class="form-group"><label>Acreedor / Proveedor</label><input type="text" id="pago-concepto" placeholder="Ej. Distribuidor"></div>
           <div class="form-group"><label>Detalle / Nota</label><input type="text" id="pago-detalle" placeholder="Insumos"></div>
         </div>
 
         <div style="background:var(--card-inner); padding:10px; border-radius:8px; border:1px solid var(--card-border-subtle); margin-bottom:12px;">
           <span style="font-size:0.75rem; color:#f87171; font-weight:800; display:block; margin-bottom:8px;">RECEPCIÓN DE OBLIGACIÓN / FACTURA</span>
           <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-            <div class="form-group"><label>N° Factura Recibida</label><input type="text" id="pago-num" placeholder="Ej. Fac-492"></div>
+            <div class="form-group"><label>N° Factura Recibida</label><input type="text" id="pago-num" placeholder="Fac-492"></div>
             <div class="form-group"><label>Fecha Emisión</label><input type="date" id="pago-emision"></div>
           </div>
-          <div class="form-group"><label>Concepto / Detalle</label><input type="text" id="pago-item" placeholder="Ej. 10 rollos de tela"></div>
+          <div class="form-group"><label>Concepto / Detalle</label><input type="text" id="pago-item" placeholder="Ej. 10 rollos tela"></div>
           <div style="display:grid; grid-template-columns: 1fr 1fr 1.2fr; gap: 8px;">
             <div class="form-group"><label>Cantidad</label><input type="number" id="pago-cant" value="1" oninput="calcularTotalPago()"></div>
             <div class="form-group"><label>Costo Unit. ($)</label><input type="number" step="0.01" id="pago-punit" placeholder="50.00" oninput="calcularTotalPago()"></div>
@@ -372,13 +371,13 @@
       <div class="card">
         <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 8px;">
           <div class="form-group"><label>Código / SKU</label><input type="text" id="inv-codigo" placeholder="Ej. P-001"></div>
-          <div class="form-group"><label>Nombre del Producto</label><input type="text" id="inv-nombre" placeholder="Ej. Llanta 205/55 R16, Fármaco X"></div>
+          <div class="form-group"><label>Nombre del Producto</label><input type="text" id="inv-nombre" placeholder="Ej. Llanta 205/55 R16"></div>
         </div>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
           <div class="form-group"><label>Stock Inicial</label><input type="number" id="inv-stock" placeholder="10"></div>
           <div class="form-group"><label>Costo Unitario ($)</label><input type="number" step="0.01" id="inv-costo" placeholder="10.00"></div>
         </div>
-        <div class="form-group"><label>Foto del Producto / Factura Compra</label><input type="file" id="inv-foto" accept="image/*"></div>
+        <div class="form-group"><label>Foto del Producto</label><input type="file" id="inv-foto" accept="image/*"></div>
         <button class="btn btn-primary" style="background: #059669;" onclick="guardarProductoInventario()">+ Agregar al Inventario</button>
       </div>
       <div class="search-filter-box">
@@ -391,12 +390,12 @@
     <section id="tab-pacientes" class="tab-content">
       <div class="card">
         <div class="form-group"><label>Nombre Completo Paciente</label><input type="text" id="pac-nombre" placeholder="Ej. Juan Pérez"></div>
-        <div class="form-group"><label>Teléfono / Celular</label><input type="tel" id="pac-telefono" placeholder="Ej. 0991234567"></div>
-        <div class="form-group"><label>Antecedentes Patológicos / Alergias</label><textarea id="pac-antecedentes" placeholder="Ej. Alérgico a Penicilina, Hipertenso..."></textarea></div>
+        <div class="form-group"><label>Teléfono</label><input type="tel" id="pac-telefono" placeholder="0991234567"></div>
+        <div class="form-group"><label>Antecedentes / Alergias</label><textarea id="pac-antecedentes"></textarea></div>
         <button class="btn btn-primary" style="background: #9333ea;" onclick="guardarPaciente()">+ Crear Expediente Clínico</button>
       </div>
       <div class="search-filter-box">
-        <input type="text" id="buscar-pac" placeholder="🔍 Buscar paciente por nombre..." oninput="renderPacientes()">
+        <input type="text" id="buscar-pac" placeholder="🔍 Buscar paciente..." oninput="renderPacientes()">
       </div>
       <div id="lista-pacientes"></div>
     </section>
@@ -415,6 +414,24 @@
       <div style="display: flex; gap: 8px; margin-top: 14px;">
         <button class="btn btn-primary" style="flex: 1;" onclick="confirmarEdicionAgenda()">Actualizar</button>
         <button class="btn btn-secondary" style="flex: 1;" onclick="cerrarModal('modal-editar-agenda')">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL PROGRAMAR NUEVA CUOTA A FACTURA EXISTENTE -->
+  <div id="modal-nueva-cuota" class="modal">
+    <div class="modal-box">
+      <h3>📅 Programar Cuota / Abono</h3>
+      <p id="modal-cuota-factura-desc" style="font-size:0.8rem; color:var(--text-muted); margin-bottom:12px;"></p>
+      <input type="hidden" id="modal-cuota-tipo">
+      <input type="hidden" id="modal-cuota-entidad-id">
+      <input type="hidden" id="modal-cuota-cargo-id">
+      <div class="form-group"><label>Valor a Pagar en esta Cuota ($)</label><input type="number" step="0.01" id="nueva-cuota-monto" placeholder="Ej. 200.00"></div>
+      <div class="form-group"><label>Fecha de Cobro Pactada</label><input type="date" id="nueva-cuota-fecha"></div>
+      <div class="form-group"><label>🔔 Alarma Recordatorio (Fecha y Hora)</label><input type="datetime-local" id="nueva-cuota-alarma"></div>
+      <div style="display: flex; gap: 8px; margin-top: 14px;">
+        <button class="btn btn-primary" style="flex: 1;" onclick="confirmarNuevaCuotaIndividual()">Guardar Cuota</button>
+        <button class="btn btn-secondary" style="flex: 1;" onclick="cerrarModal('modal-nueva-cuota')">Cancelar</button>
       </div>
     </div>
   </div>
@@ -479,10 +496,10 @@
       <input type="hidden" id="modal-cargo-id">
 
       <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-        <div class="form-group"><label>N° Comprobante</label><input type="text" id="cargo-num" placeholder="Fact. 002"></div>
+        <div class="form-group"><label>N° Comprobante</label><input type="text" id="cargo-num" placeholder="001-001-11"></div>
         <div class="form-group"><label>Fecha Emisión</label><input type="date" id="cargo-emision"></div>
       </div>
-      <div class="form-group"><label>Concepto / Detalle</label><input type="text" id="cargo-concepto" placeholder="Ej. Trajes"></div>
+      <div class="form-group"><label>Concepto / Detalle</label><input type="text" id="cargo-concepto" placeholder="Ej. Camisas"></div>
       <div style="display:grid; grid-template-columns: 1fr 1fr 1.2fr; gap: 8px;">
         <div class="form-group"><label>Cantidad</label><input type="number" id="cargo-cant" value="1" oninput="calcularTotalCargoModal()"></div>
         <div class="form-group"><label>Precio Unit. ($)</label><input type="number" step="0.01" id="cargo-punit" placeholder="100.00" oninput="calcularTotalCargoModal()"></div>
@@ -555,7 +572,7 @@
   <nav class="bottom-nav">
     <button class="nav-btn active" onclick="cambiarPestana('agenda', this)"><svg viewBox="0 0 24 24"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11z"/></svg>Agenda</button>
     <button class="nav-btn" onclick="cambiarPestana('cobros', this)"><svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 1.34 5 3s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>Cobros</button>
-    <button class="nav-btn" onclick="cambiarPestana('pagos', this)"><svg viewBox="0 0 24 24"><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.1-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>Pagos</button>
+    <button class="nav-btn" onclick="cambiarPestana('pagos', this)"><svg viewBox="0 0 24 24"><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>Pagos</button>
     <button class="nav-btn" onclick="cambiarPestana('inventario', this)"><svg viewBox="0 0 24 24"><path d="M20 2H4c-1 0-2 .9-2 2v3.01c0 .72.43 1.34 1 1.69V20c0 1.1 1.1 2 2 2h14c.9 0 2-.9 2-2V8.7c.57-.35 1-.97 1-1.69V4c0-1.1-1-2-2-2zm-1 18H5V9h14v11zm1-13H4V4h16v3z"/></svg>Inventario</button>
     <button class="nav-btn" onclick="cambiarPestana('pacientes', this)"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-4H7v-2h4V7h2v4h4v2h-4v4z"/></svg>Pacientes</button>
   </nav>
@@ -572,7 +589,7 @@
     var hoyStr = new Date().toISOString().split('T')[0];
     function setHoy(id) { var el = document.getElementById(id); if (el) el.value = hoyStr; }
     setHoy('cobro-emision'); setHoy('cobro-fecha'); setHoy('pago-emision'); setHoy('pago-fecha');
-    setHoy('abono-fecha'); setHoy('cuota-fecha'); setHoy('cargo-emision'); setHoy('cargo-fecha');
+    setHoy('abono-fecha'); setHoy('cuota-fecha'); setHoy('cargo-emision'); setHoy('cargo-fecha'); setHoy('nueva-cuota-fecha');
 
     var cobrosAbiertos = [];
     var pagosAbiertos = [];
@@ -672,10 +689,11 @@
       var cont = document.getElementById(contId);
       if (!cont) return;
       var fId = 'cuota_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+      var count = cont.querySelectorAll('.cuota-row-input').length + 1;
       var row = document.createElement('div');
       row.className = 'cuota-row-input';
       row.id = fId;
-      row.innerHTML = '<input type="number" step="0.01" class="cuota-monto-val" placeholder="Cuota $" value="' + (montoDef || '') + '">' +
+      row.innerHTML = '<input type="number" step="0.01" class="cuota-monto-val" placeholder="Valor Cuota ' + count + ' $" value="' + (montoDef || '') + '">' +
                       '<input type="date" class="cuota-fecha-val" value="' + (fechaDef || hoyStr) + '">' +
                       '<button class="btn btn-danger" style="padding:6px 9px;" onclick="document.getElementById(\'' + fId + '\').remove()">✕</button>';
       cont.appendChild(row);
@@ -723,6 +741,84 @@
       var ini = parseFloat(document.getElementById('pago-abono-ini').value) || 0;
       var saldo = Math.max(0, tot - ini);
       document.getElementById('lbl-resumen-cuotas-pago').innerText = 'Saldo a cubrir en cuotas: $' + saldo.toFixed(2);
+    }
+
+    // --- PROGRAMAR NUEVA CUOTA A FACTURA EXISTENTE ---
+    function abrirModalNuevaCuota(tipo, entidadId, cargoId, nomFactura) {
+      document.getElementById('modal-cuota-tipo').value = tipo;
+      document.getElementById('modal-cuota-entidad-id').value = entidadId;
+      document.getElementById('modal-cuota-cargo-id').value = cargoId;
+      document.getElementById('modal-cuota-factura-desc').innerText = 'Obligación: ' + nomFactura;
+      document.getElementById('nueva-cuota-monto').value = '';
+      setHoy('nueva-cuota-fecha');
+      document.getElementById('nueva-cuota-alarma').value = '';
+      document.getElementById('modal-nueva-cuota').classList.add('active');
+    }
+
+    async function confirmarNuevaCuotaIndividual() {
+      var tipo = document.getElementById('modal-cuota-tipo').value;
+      var entidadId = document.getElementById('modal-cuota-entidad-id').value;
+      var cargoId = document.getElementById('modal-cuota-cargo-id').value;
+      var monto = parseFloat(document.getElementById('nueva-cuota-monto').value);
+      var fecha = document.getElementById('nueva-cuota-fecha').value || hoyStr;
+      var alarmaVal = document.getElementById('nueva-cuota-alarma').value;
+      if (isNaN(monto) || monto <= 0) return alert('Ingresa un valor válido para la cuota.');
+
+      var isoAlarma = alarmaVal ? new Date(alarmaVal).toISOString() : null;
+      var idComp = 'loc_cp_' + Date.now();
+
+      var nuevoComp = {
+        id: idComp,
+        tipo: tipo,
+        cliente_id: tipo === 'cobro' ? entidadId : null,
+        acreedor_id: tipo === 'pago' ? entidadId : null,
+        cargo_id: cargoId,
+        monto_pactado: monto,
+        monto_cubierto: 0,
+        fecha_pactada: fecha,
+        fecha_alarma: isoAlarma,
+        alarma_enviada: false,
+        estado: 'pendiente',
+        historial_reprogramaciones: []
+      };
+
+      cacheCompromisos.push(nuevoComp);
+      guardarMemoriaLocal();
+      dibujarCobros();
+      dibujarPagos();
+      cerrarModal('modal-nueva-cuota');
+
+      if (navigator.onLine && db) {
+        try {
+          var payload = {
+            id: 'cp_' + Date.now(),
+            tipo: tipo,
+            cliente_id: tipo === 'cobro' ? entidadId : null,
+            acreedor_id: tipo === 'pago' ? entidadId : null,
+            cargo_id: cargoId,
+            monto_pactado: monto,
+            fecha_pactada: fecha,
+            fecha_alarma: isoAlarma,
+            estado: 'pendiente'
+          };
+          var ins = await db.from('compromisos_pago').insert(payload).select().single();
+          if (ins.data) nuevoComp.id = ins.data.id;
+          guardarMemoriaLocal();
+        } catch(e) {}
+      }
+    }
+
+    // --- BORRAR COMPROMISO ---
+    async function borrarCompromiso(compId) {
+      if (!confirm('¿Eliminar este compromiso de cuota?')) return;
+      cacheCompromisos = cacheCompromisos.filter(function(x) { return String(x.id) !== String(compId); });
+      guardarMemoriaLocal();
+      dibujarCobros();
+      dibujarPagos();
+
+      if (navigator.onLine && db && !String(compId).startsWith('loc_')) {
+        try { await db.from('compromisos_pago').delete().eq('id', compId); } catch(e){}
+      }
     }
 
     // --- REPROGRAMAR COMPROMISO ---
@@ -1002,7 +1098,6 @@
           cobros_abonos: []
         };
 
-        // Si dio abono inicial en el mismo acto
         if (abonoIni > 0) {
           nuevoCli.cobros_abonos.push({
             id: 'loc_a_' + Date.now(), cargo_id: idCargo, monto: abonoIni, fecha: fEmision,
@@ -1011,7 +1106,6 @@
           });
         }
 
-        // Crear cuotas / compromisos
         cuotasPactadas.forEach(function(cp, idx) {
           cacheCompromisos.push({
             id: 'loc_cp_' + Date.now() + '_' + idx, tipo: 'cobro', cliente_id: idCli, cargo_id: idCargo,
@@ -1025,7 +1119,6 @@
         guardarMemoriaLocal();
         dibujarCobros();
 
-        // Limpiar formulario
         document.getElementById('cobro-cliente').value = '';
         document.getElementById('cobro-telefono').value = '';
         document.getElementById('cobro-num').value = '';
@@ -1080,11 +1173,12 @@
       document.getElementById('modal-venta-id').value = cliId;
       document.getElementById('modal-cliente-nombre').innerText = 'Cliente: ' + v.nombre;
       document.getElementById('modal-compromiso-origen-id').value = compOrigenId || '';
-      document.getElementById('abono-monto').value = montoSugerido ? Number(montoSugerido).toFixed(2) : '';
+      document.getElementById('abono-monto').value = (montoSugerido !== undefined && montoSugerido !== null) ? Number(montoSugerido).toFixed(2) : '';
       document.getElementById('abono-tipo').value = '';
       document.getElementById('abono-nota').value = '';
       document.getElementById('box-excedente-abono').style.display = 'none';
       document.getElementById('abono-excedente-cargo-id').innerHTML = '';
+      var fInput = document.getElementById('abono-foto'); if (fInput) fInput.value = '';
       setHoy('abono-fecha');
 
       var sel = document.getElementById('abono-cargo-id');
@@ -1098,10 +1192,12 @@
         opt.text = nomComp + (isCerrada ? ' [✔ Ya Saldada]' : ' [Saldo: $' + sPend.toFixed(2) + ']');
         opt.dataset.saldo = sPend;
         opt.disabled = isCerrada;
-        if (cargoPreId && String(c.id) === String(cargoPreId)) opt.selected = true;
         sel.appendChild(opt);
       });
 
+      if (cargoPreId) {
+        sel.value = String(cargoPreId);
+      }
       verificarExcedenteAbono();
       document.getElementById('modal-abono').classList.add('active');
     }
@@ -1160,7 +1256,7 @@
       var fecha = document.getElementById('abono-fecha').value || hoyStr;
       var tipo = document.getElementById('abono-tipo').value.trim() || 'Abono';
       var nota = document.getElementById('abono-nota').value.trim();
-      if (isNaN(monto) || monto <= 0) return alert('Ingresa monto válido.');
+      if (isNaN(monto) || monto <= 0) return alert('Ingresa un monto válido.');
 
       var cargoExcedenteId = null;
       var boxExc = document.getElementById('box-excedente-abono');
@@ -1206,7 +1302,6 @@
           var nuevoAbono = { id: 'loc_a_' + Date.now(), cargo_id: cargoId, monto: monto, fecha: fecha, tipo: tipo, nota: nota, foto_url: fotoBase64, desglose_imputacion: desglose };
           v.cobros_abonos.push(nuevoAbono);
 
-          // Si vino de un compromiso pactado, marcarlo cumplido
           if (compOrigenId) {
             var cp = cacheCompromisos.find(function(x) { return String(x.id) === String(compOrigenId); });
             if (cp) {
@@ -1430,7 +1525,6 @@
           var cSaldado = (c.estado === 'saldado') || (sPend <= 0.001);
           var nomFact = c.numero_comprobante ? c.numero_comprobante + ' (' + c.concepto + ')' : c.concepto;
 
-          // Historial de pagos de esta factura
           var abonosDeEstaFactura = [];
           for (var k = 0; k < abonos.length; k++) {
             var ab = abonos[k];
@@ -1456,27 +1550,34 @@
             historialHtml += '</div>';
           }
 
-          // Compromisos de esta factura
+          // Compromisos / Cuotas
           var cuotasDeFactura = cacheCompromisos.filter(function(cp) { return String(cp.cargo_id) === String(c.id); });
-          var compromisosHtml = '';
+          var compromisosHtml = '<div style="margin-top:6px; border-top:1px dashed var(--card-border-subtle); padding-top:4px;">' +
+            '<div style="display:flex; justify-content:space-between; align-items:center;">' +
+              '<span style="font-size:0.68rem; color:#cbd5e1; font-weight:700;">📅 Cuotas / Compromisos (' + cuotasDeFactura.length + '):</span>' +
+              (!cSaldado ? '<button class="btn btn-secondary" style="font-size:0.65rem; padding:1px 6px;" onclick="abrirModalNuevaCuota(\'cobro\', \'' + v.id + '\', \'' + c.id + '\', \'' + nomFact.replace(/'/g, "\\'") + '\')">+ Programar Cuota</button>' : '') +
+            '</div>';
+
           if (cuotasDeFactura.length > 0) {
-            compromisosHtml = '<div style="margin-top:6px; border-top:1px dashed var(--card-border-subtle); padding-top:4px;"><span style="font-size:0.68rem; color:#cbd5e1; font-weight:700;">📅 Compromisos Pactados:</span>';
             cuotasDeFactura.forEach(function(cp) {
               var esCumplido = cp.estado === 'cumplido';
               var nReprog = (cp.historial_reprogramaciones && cp.historial_reprogramaciones.length) || 0;
               compromisosHtml += '<div class="compromiso-card-item">' +
                 '<div style="display:flex; justify-content:space-between; align-items:center;">' +
                   '<span>• Cuota: <b>$' + Number(cp.monto_pactado).toFixed(2) + '</b> (Pactada: ' + cp.fecha_pactada + ')</span>' +
-                  (esCumplido ? '<span class="badge badge-done" style="font-size:0.6rem;">✔ Cumplido</span>' : (nReprog > 0 ? '<span class="badge badge-mora" style="font-size:0.6rem;">⚠️ Pospuesto (' + nReprog + ')</span>' : '<span class="badge badge-pending" style="font-size:0.6rem;">Pendiente</span>')) +
+                  '<div style="display:flex; align-items:center; gap:6px;">' +
+                    (esCumplido ? '<span class="badge badge-done" style="font-size:0.6rem;">✔ Cumplido</span>' : (nReprog > 0 ? '<span class="badge badge-mora" style="font-size:0.6rem;">⚠️ Pospuesto (' + nReprog + ')</span>' : '<span class="badge badge-pending" style="font-size:0.6rem;">Pendiente</span>')) +
+                    '<button class="btn-del-mini" style="font-size:0.8rem; padding:1px 4px;" title="Eliminar cuota" onclick="borrarCompromiso(\'' + cp.id + '\')">✕</button>' +
+                  '</div>' +
                 '</div>' +
                 (!esCumplido ? '<div style="display:flex; gap:6px; margin-top:4px;">' +
-                  '<button class="btn btn-success" style="font-size:0.68rem; padding:3px 6px;" onclick="abrirModalAbono(\'' + v.id + '\', \'' + c.id + '\', ' + cp.monto_pactado + ', \'' + cp.id + '\')">💵 Asentar Pago</button>' +
+                  '<button class="btn btn-success" style="font-size:0.68rem; padding:3px 6px;" onclick="abrirModalAbono(\'' + v.id + '\', \'' + c.id + '\', ' + Number(cp.monto_pactado) + ', \'' + cp.id + '\')">💵 Asentar Pago</button>' +
                   '<button class="btn btn-secondary" style="font-size:0.68rem; padding:3px 6px; background:#f59e0b; color:#000; font-weight:700;" onclick="abrirModalReprogramar(\'' + cp.id + '\')">⏳ Posponer</button>' +
                 '</div>' : '') +
               '</div>';
             });
-            compromisosHtml += '</div>';
           }
+          compromisosHtml += '</div>';
 
           html += '<div class="ledger-item" style="' + (cSaldado ? 'opacity:0.85; border-left:3px solid var(--success);' : '') + ' flex-direction:column; align-items:stretch; gap:6px;">' +
             '<div style="display:flex; justify-content:space-between; align-items:flex-start;">' +
@@ -1646,10 +1747,11 @@
       document.getElementById('modal-pago-id').value = acrId;
       document.getElementById('modal-pago-nombre').innerText = 'Acreedor: ' + p.nombre;
       document.getElementById('modal-pago-compromiso-origen-id').value = compOrigenId || '';
-      document.getElementById('cuota-monto').value = montoSugerido ? Number(montoSugerido).toFixed(2) : '';
+      document.getElementById('cuota-monto').value = (montoSugerido !== undefined && montoSugerido !== null) ? Number(montoSugerido).toFixed(2) : '';
       document.getElementById('cuota-tipo').value = '';
       document.getElementById('cuota-nota').value = '';
       document.getElementById('box-excedente-pago').style.display = 'none';
+      var fInput = document.getElementById('cuota-foto'); if (fInput) fInput.value = '';
       setHoy('cuota-fecha');
 
       var sel = document.getElementById('cuota-cargo-id');
@@ -1663,10 +1765,12 @@
         opt.text = nomComp + (isCerrada ? ' [✔ Cancelada]' : ' [Saldo: $' + sPend.toFixed(2) + ']');
         opt.dataset.saldo = sPend;
         opt.disabled = isCerrada;
-        if (cargoPreId && String(c.id) === String(cargoPreId)) opt.selected = true;
         sel.appendChild(opt);
       });
 
+      if (cargoPreId) {
+        sel.value = String(cargoPreId);
+      }
       verificarExcedentePago();
       document.getElementById('modal-pago-cuota').classList.add('active');
     }
@@ -1910,25 +2014,32 @@
           }
 
           var cuotasDeFactura = cacheCompromisos.filter(function(cp) { return String(cp.cargo_id) === String(c.id); });
-          var compromisosHtml = '';
+          var compromisosHtml = '<div style="margin-top:6px; border-top:1px dashed var(--card-border-subtle); padding-top:4px;">' +
+            '<div style="display:flex; justify-content:space-between; align-items:center;">' +
+              '<span style="font-size:0.68rem; color:#cbd5e1; font-weight:700;">📅 Cuotas Acordadas (' + cuotasDeFactura.length + '):</span>' +
+              (!cCancelado ? '<button class="btn btn-secondary" style="font-size:0.65rem; padding:1px 6px;" onclick="abrirModalNuevaCuota(\'pago\', \'' + p.id + '\', \'' + c.id + '\', \'' + nomFact.replace(/'/g, "\\'") + '\')">+ Programar Cuota</button>' : '') +
+            '</div>';
+
           if (cuotasDeFactura.length > 0) {
-            compromisosHtml = '<div style="margin-top:6px; border-top:1px dashed var(--card-border-subtle); padding-top:4px;"><span style="font-size:0.68rem; color:#cbd5e1; font-weight:700;">📅 Cuotas Acordadas con Proveedor:</span>';
             cuotasDeFactura.forEach(function(cp) {
               var esCumplido = cp.estado === 'cumplido';
               var nReprog = (cp.historial_reprogramaciones && cp.historial_reprogramaciones.length) || 0;
               compromisosHtml += '<div class="compromiso-card-item">' +
                 '<div style="display:flex; justify-content:space-between; align-items:center;">' +
                   '<span>• Cuota: <b>$' + Number(cp.monto_pactado).toFixed(2) + '</b> (Pactada: ' + cp.fecha_pactada + ')</span>' +
-                  (esCumplido ? '<span class="badge badge-done" style="font-size:0.6rem;">✔ Cumplido</span>' : (nReprog > 0 ? '<span class="badge badge-mora" style="font-size:0.6rem;">⚠️ Prórroga (' + nReprog + ')</span>' : '<span class="badge badge-pending" style="font-size:0.6rem;">Pendiente</span>')) +
+                  '<div style="display:flex; align-items:center; gap:6px;">' +
+                    (esCumplido ? '<span class="badge badge-done" style="font-size:0.6rem;">✔ Cumplido</span>' : (nReprog > 0 ? '<span class="badge badge-mora" style="font-size:0.6rem;">⚠️ Prórroga (' + nReprog + ')</span>' : '<span class="badge badge-pending" style="font-size:0.6rem;">Pendiente</span>')) +
+                    '<button class="btn-del-mini" style="font-size:0.8rem; padding:1px 4px;" title="Eliminar cuota" onclick="borrarCompromiso(\'' + cp.id + '\')">✕</button>' +
+                  '</div>' +
                 '</div>' +
                 (!esCumplido ? '<div style="display:flex; gap:6px; margin-top:4px;">' +
-                  '<button class="btn btn-success" style="font-size:0.68rem; padding:3px 6px;" onclick="abrirModalPagoCuota(\'' + p.id + '\', \'' + c.id + '\', ' + cp.monto_pactado + ', \'' + cp.id + '\')">💵 Asentar Pago</button>' +
+                  '<button class="btn btn-success" style="font-size:0.68rem; padding:3px 6px;" onclick="abrirModalPagoCuota(\'' + p.id + '\', \'' + c.id + '\', ' + Number(cp.monto_pactado) + ', \'' + cp.id + '\')">💵 Asentar Pago</button>' +
                   '<button class="btn btn-secondary" style="font-size:0.68rem; padding:3px 6px; background:#f59e0b; color:#000; font-weight:700;" onclick="abrirModalReprogramar(\'' + cp.id + '\')">⏳ Prórroga</button>' +
                 '</div>' : '') +
               '</div>';
             });
-            compromisosHtml += '</div>';
           }
+          compromisosHtml += '</div>';
 
           html += '<div class="ledger-item" style="' + (cCancelado ? 'opacity:0.85; border-left:3px solid var(--success);' : '') + ' flex-direction:column; align-items:stretch; gap:6px;">' +
             '<div style="display:flex; justify-content:space-between; align-items:flex-start;">' +
