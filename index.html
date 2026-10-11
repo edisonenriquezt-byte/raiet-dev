@@ -113,7 +113,7 @@
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
     body { background-color: var(--bg); color: var(--text); padding-top: env(safe-area-inset-top); padding-bottom: calc(85px + env(safe-area-inset-bottom)); -webkit-font-smoothing: antialiased; user-select: none; }
     input, textarea, select { user-select: auto; }
-    .container { max-width: 580px; margin: 0 auto; padding: 14px; }
+    .container { max-width: 580px; margin: 0 auto; padding: 12px; }
 
     header.brand-header {
       padding: 12px 14px; margin-bottom: 14px;
@@ -162,11 +162,53 @@
     .tab-content { display: none; }
     .tab-content.active { display: block; }
 
-    .card { background: var(--card); border: 1px solid var(--card-border); border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4); }
-    .form-group { margin-bottom: 12px; }
-    label { display: block; font-size: 0.7rem; color: var(--matte-steel); margin-bottom: 4px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.04em; }
-    input, select, textarea { width: 100%; padding: 10px 12px; border-radius: 8px; background: var(--card-inner); border: 1px solid var(--card-border); color: #fff; font-size: 0.95rem; outline: none; }
-    input[type="file"] { padding: 6px; font-size: 0.8rem; color: var(--matte-steel); }
+    .card { background: var(--card); border: 1px solid var(--card-border); border-radius: 12px; padding: 14px; margin-bottom: 16px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4); }
+    .form-group { margin-bottom: 12px; display: flex; flex-direction: column; }
+    
+    /* ALINEACIÓN PERFECTA DE ETIQUETAS EN MÓVIL */
+    label {
+      display: flex;
+      align-items: flex-end;
+      min-height: 24px;
+      font-size: 0.68rem;
+      color: var(--matte-steel);
+      margin-bottom: 5px;
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      line-height: 1.15;
+    }
+    
+    input, select, textarea {
+      width: 100%;
+      padding: 9px 10px;
+      border-radius: 8px;
+      background: var(--card-inner);
+      border: 1px solid var(--card-border);
+      color: #fff;
+      font-size: 0.9rem;
+      outline: none;
+    }
+    input[type="date"], input[type="datetime-local"] {
+      padding: 8px 8px;
+      font-size: 0.84rem;
+    }
+    input[type="file"] {
+      padding: 6px 8px;
+      font-size: 0.78rem;
+      color: var(--matte-steel);
+    }
+    input[type="file"]::file-selector-button {
+      background: #1e293b;
+      color: #cbd5e1;
+      border: 1px solid var(--card-border);
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      margin-right: 6px;
+      cursor: pointer;
+    }
     textarea { resize: vertical; min-height: 55px; }
     input:focus, select:focus, textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25); }
 
@@ -275,7 +317,7 @@
     <!-- 2. COBROS -->
     <section id="tab-cobros" class="tab-content">
       <div class="card">
-        <div style="display:grid; grid-template-columns: 2fr 1fr; gap: 8px;">
+        <div style="display:grid; grid-template-columns: 1.3fr 1fr; gap: 8px;">
           <div class="form-group"><label>Cliente</label><input type="text" id="cobro-cliente" placeholder="Nombre completo"></div>
           <div class="form-group"><label>Teléfono</label><input type="tel" id="cobro-telefono" placeholder="0991234567"></div>
         </div>
@@ -283,26 +325,26 @@
         <div style="background:var(--card-inner); padding:10px; border-radius:8px; border:1px solid var(--card-border-subtle); margin-bottom:12px;">
           <span style="font-size:0.75rem; color:var(--accent); font-weight:800; display:block; margin-bottom:8px;">EMISIÓN DE OBLIGACIÓN / FACTURA</span>
           <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-            <div class="form-group"><label>N° Comprobante / Factura</label><input type="text" id="cobro-num" placeholder="Ej. 001-001-10"></div>
+            <div class="form-group"><label>N° Comprobante</label><input type="text" id="cobro-num" placeholder="Ej. 001-001-10"></div>
             <div class="form-group"><label>Fecha Emisión</label><input type="date" id="cobro-emision"></div>
           </div>
           <div class="form-group"><label>Concepto / Detalle</label><input type="text" id="cobro-concepto" placeholder="Ej. Ternos ejecutivos"></div>
-          <div style="display:grid; grid-template-columns: 1fr 1fr 1.2fr; gap: 8px;">
+          <div style="display:grid; grid-template-columns: 0.8fr 1.1fr 1.1fr; gap: 8px;">
             <div class="form-group"><label>Cantidad</label><input type="number" id="cobro-cant" value="1" oninput="calcularTotalCobro()"></div>
-            <div class="form-group"><label>Precio Unit. ($)</label><input type="number" step="0.01" id="cobro-punit" placeholder="300.00" oninput="calcularTotalCobro()"></div>
+            <div class="form-group"><label>P. Unitario ($)</label><input type="number" step="0.01" id="cobro-punit" placeholder="300.00" oninput="calcularTotalCobro()"></div>
             <div class="form-group"><label>Total ($)</label><input type="number" step="0.01" id="cobro-total" placeholder="300.00"></div>
           </div>
           
           <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top:4px;">
-            <div class="form-group"><label>Abono Inicial Hoy ($)</label><input type="number" step="0.01" id="cobro-abono-ini" placeholder="0.00" oninput="actualizarResumenCuotasCobro()"></div>
-            <div class="form-group"><label>Fecha Venc. Final</label><input type="date" id="cobro-fecha"></div>
+            <div class="form-group"><label>Abono Inicial ($)</label><input type="number" step="0.01" id="cobro-abono-ini" placeholder="0.00" oninput="actualizarResumenCuotasCobro()"></div>
+            <div class="form-group"><label>Vencimiento Final</label><input type="date" id="cobro-fecha"></div>
           </div>
           <div class="form-group"><label>Foto Factura / Contrato</label><input type="file" id="cobro-foto" accept="image/*"></div>
         </div>
 
         <div class="plan-cuotas-box">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-            <span style="font-size:0.72rem; color:#e2e8f0; font-weight:800;">📅 PLAN DE CUOTAS / ABONOS PROGRAMADOS</span>
+            <span style="font-size:0.72rem; color:#e2e8f0; font-weight:800;">📅 CUOTAS PROGRAMADAS</span>
             <button class="btn btn-secondary" style="padding:2px 8px; font-size:0.7rem;" onclick="agregarFilaCompromiso('contenedor-cuotas-cobro')">+ Cuota</button>
           </div>
           <div id="contenedor-cuotas-cobro"></div>
@@ -322,7 +364,7 @@
     <!-- 3. CUENTAS POR PAGAR -->
     <section id="tab-pagos" class="tab-content">
       <div class="card">
-        <div style="display:grid; grid-template-columns: 2fr 1fr; gap: 8px;">
+        <div style="display:grid; grid-template-columns: 1.3fr 1fr; gap: 8px;">
           <div class="form-group"><label>Acreedor / Proveedor</label><input type="text" id="pago-concepto" placeholder="Ej. El Tuti"></div>
           <div class="form-group"><label>Detalle / Nota</label><input type="text" id="pago-detalle" placeholder="Supermercado / Insumos"></div>
         </div>
@@ -334,21 +376,21 @@
             <div class="form-group"><label>Fecha Emisión</label><input type="date" id="pago-emision"></div>
           </div>
           <div class="form-group"><label>Concepto / Detalle</label><input type="text" id="pago-item" placeholder="Ej. Compras varias"></div>
-          <div style="display:grid; grid-template-columns: 1fr 1fr 1.2fr; gap: 8px;">
+          <div style="display:grid; grid-template-columns: 0.8fr 1.1fr 1.1fr; gap: 8px;">
             <div class="form-group"><label>Cantidad</label><input type="number" id="pago-cant" value="1" oninput="calcularTotalPago()"></div>
             <div class="form-group"><label>Costo Unit. ($)</label><input type="number" step="0.01" id="pago-punit" placeholder="50.00" oninput="calcularTotalPago()"></div>
-            <div class="form-group"><label>Monto Total ($)</label><input type="number" step="0.01" id="pago-monto" placeholder="50.00"></div>
+            <div class="form-group"><label>Total ($)</label><input type="number" step="0.01" id="pago-monto" placeholder="50.00"></div>
           </div>
           <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top:4px;">
-            <div class="form-group"><label>Anticipo Pagado Hoy ($)</label><input type="number" step="0.01" id="pago-abono-ini" placeholder="0.00" oninput="actualizarResumenCuotasPago()"></div>
-            <div class="form-group"><label>Fecha Venc. Final</label><input type="date" id="pago-fecha"></div>
+            <div class="form-group"><label>Anticipo Pagado ($)</label><input type="number" step="0.01" id="pago-abono-ini" placeholder="0.00" oninput="actualizarResumenCuotasPago()"></div>
+            <div class="form-group"><label>Vencimiento Final</label><input type="date" id="pago-fecha"></div>
           </div>
           <div class="form-group"><label>Foto Factura Proveedor</label><input type="file" id="pago-foto" accept="image/*"></div>
         </div>
 
         <div class="plan-cuotas-box">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-            <span style="font-size:0.72rem; color:#e2e8f0; font-weight:800;">📅 PLAN DE PAGOS AL PROVEEDOR</span>
+            <span style="font-size:0.72rem; color:#e2e8f0; font-weight:800;">📅 CUOTAS PROGRAMADAS</span>
             <button class="btn btn-secondary" style="padding:2px 8px; font-size:0.7rem;" onclick="agregarFilaCompromiso('contenedor-cuotas-pago')">+ Cuota</button>
           </div>
           <div id="contenedor-cuotas-pago"></div>
@@ -504,9 +546,9 @@
         <div class="form-group"><label>Fecha Emisión</label><input type="date" id="cargo-emision"></div>
       </div>
       <div class="form-group"><label>Concepto / Detalle</label><input type="text" id="cargo-concepto" placeholder="Ej. Camisas"></div>
-      <div style="display:grid; grid-template-columns: 1fr 1fr 1.2fr; gap: 8px;">
+      <div style="display:grid; grid-template-columns: 0.8fr 1.1fr 1.1fr; gap: 8px;">
         <div class="form-group"><label>Cantidad</label><input type="number" id="cargo-cant" value="1" oninput="calcularTotalCargoModal()"></div>
-        <div class="form-group"><label>Precio Unit. ($)</label><input type="number" step="0.01" id="cargo-punit" placeholder="100.00" oninput="calcularTotalCargoModal()"></div>
+        <div class="form-group"><label>P. Unitario ($)</label><input type="number" step="0.01" id="cargo-punit" placeholder="100.00" oninput="calcularTotalCargoModal()"></div>
         <div class="form-group"><label>Total ($)</label><input type="number" step="0.01" id="cargo-monto" placeholder="100.00"></div>
       </div>
       <div class="form-group"><label>Fecha Vencimiento</label><input type="date" id="cargo-fecha"></div>
@@ -581,7 +623,7 @@
   <nav class="bottom-nav">
     <button class="nav-btn active" onclick="cambiarPestana('agenda', this)"><svg viewBox="0 0 24 24"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11z"/></svg>Agenda</button>
     <button class="nav-btn" onclick="cambiarPestana('cobros', this)"><svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 1.34 5 3s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>Cobros</button>
-    <button class="nav-btn" onclick="cambiarPestana('pagos', this)"><svg viewBox="0 0 24 24"><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.1-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>Pagos</button>
+    <button class="nav-btn" onclick="cambiarPestana('pagos', this)"><svg viewBox="0 0 24 24"><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>Pagos</button>
     <button class="nav-btn" onclick="cambiarPestana('inventario', this)"><svg viewBox="0 0 24 24"><path d="M20 2H4c-1 0-2 .9-2 2v3.01c0 .72.43 1.34 1 1.69V20c0 1.1 1.1 2 2 2h14c.9 0 2-.9 2-2V8.7c.57-.35 1-.97 1-1.69V4c0-1.1-1-2-2-2zm-1 18H5V9h14v11zm1-13H4V4h16v3z"/></svg>Inventario</button>
     <button class="nav-btn" onclick="cambiarPestana('pacientes', this)"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-4H7v-2h4V7h2v4h4v2h-4v4z"/></svg>Pacientes</button>
   </nav>
@@ -1324,7 +1366,6 @@
                 }
               }
 
-              // AUTO-CUMPLIR COMPROMISOS si la factura quedó saldada al 100%
               if (cargoActualizado.saldo_pendiente <= 0.001) {
                 cacheCompromisos.forEach(function(cp) {
                   if (String(cp.cargo_id) === String(cargoId)) {
@@ -1341,7 +1382,6 @@
           var nuevoAbono = { id: 'loc_a_' + Date.now(), cargo_id: cargoId, monto: monto, fecha: fecha, tipo: tipo, nota: nota, foto_url: fotoBase64, desglose_imputacion: desglose };
           v.cobros_abonos.push(nuevoAbono);
 
-          // Actualizar acumulación real de la cuota comprometida
           if (compOrigenId) {
             var cp = cacheCompromisos.find(function(x) { return String(x.id) === String(compOrigenId); });
             if (cp) {
