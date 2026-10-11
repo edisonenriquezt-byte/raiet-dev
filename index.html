@@ -451,11 +451,17 @@
     </div>
   </div>
 
-  <!-- MODAL ABONO (COBROS) -->
+  <!-- MODAL ABONO (COBROS) CON ALERTA DE SALDO REAL -->
   <div id="modal-abono" class="modal">
     <div class="modal-box">
       <h3>Registrar Abono</h3>
-      <p id="modal-cliente-nombre" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;"></p>
+      <p id="modal-cliente-nombre" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px;"></p>
+      
+      <!-- AVISO INTELIGENTE DE CRUCE DE CUOTA VS SALDO -->
+      <div id="box-aviso-cuota" style="display:none; background: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 8px; padding: 8px 10px; margin-bottom: 10px; font-size: 0.75rem; color: #bae6fd;">
+        ℹ️ <span id="txt-aviso-cuota"></span>
+      </div>
+
       <input type="hidden" id="modal-venta-id">
       <input type="hidden" id="modal-compromiso-origen-id">
       
@@ -467,7 +473,7 @@
       </div>
 
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-        <div class="form-group"><label>Monto Recibido ($)</label><input type="number" step="0.01" id="abono-monto" oninput="verificarExcedenteAbono()"></div>
+        <div class="form-group"><label>Monto a Registrar ($)</label><input type="number" step="0.01" id="abono-monto" oninput="verificarExcedenteAbono()"></div>
         <div class="form-group"><label>Fecha Abono</label><input type="date" id="abono-fecha"></div>
       </div>
 
@@ -522,11 +528,16 @@
     </div>
   </div>
 
-  <!-- MODAL PAGO CUOTA (PROVEEDORES) -->
+  <!-- MODAL PAGO CUOTA (PROVEEDORES) CON ALERTA DE SALDO REAL -->
   <div id="modal-pago-cuota" class="modal">
     <div class="modal-box">
       <h3>Registrar Pago Realizado</h3>
-      <p id="modal-pago-nombre" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;"></p>
+      <p id="modal-pago-nombre" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px;"></p>
+
+      <div id="box-aviso-cuota-pago" style="display:none; background: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 8px; padding: 8px 10px; margin-bottom: 10px; font-size: 0.75rem; color: #bae6fd;">
+        ℹ️ <span id="txt-aviso-cuota-pago"></span>
+      </div>
+
       <input type="hidden" id="modal-pago-id">
       <input type="hidden" id="modal-pago-compromiso-origen-id">
       
@@ -1205,6 +1216,15 @@
       var saldoRealFactura = cargoSeleccionadoObj ? ((cargoSeleccionadoObj.saldo_pendiente != null) ? Number(cargoSeleccionadoObj.saldo_pendiente) : Number(cargoSeleccionadoObj.monto)) : 999999;
       var valorFinalSugerido = montoSugerido !== undefined && montoSugerido !== null ? Math.min(Number(montoSugerido), saldoRealFactura) : (saldoRealFactura < 999999 ? saldoRealFactura : '');
 
+      var boxAviso = document.getElementById('box-aviso-cuota');
+      var txtAviso = document.getElementById('txt-aviso-cuota');
+      if (montoSugerido && Number(montoSugerido) > saldoRealFactura && saldoRealFactura > 0) {
+        boxAviso.style.display = 'block';
+        txtAviso.innerText = 'Cuota pactada: $' + Number(montoSugerido).toFixed(2) + ' • Saldo pendiente real de la factura: $' + saldoRealFactura.toFixed(2) + '. Se sugiere cobrar $' + saldoRealFactura.toFixed(2) + ' para liquidar la cuenta.';
+      } else {
+        boxAviso.style.display = 'none';
+      }
+
       document.getElementById('abono-monto').value = (valorFinalSugerido > 0) ? Number(valorFinalSugerido).toFixed(2) : '';
 
       verificarExcedenteAbono();
@@ -1806,6 +1826,15 @@
 
       var saldoRealFactura = cargoSeleccionadoObj ? ((cargoSeleccionadoObj.saldo_pendiente != null) ? Number(cargoSeleccionadoObj.saldo_pendiente) : Number(cargoSeleccionadoObj.monto)) : 999999;
       var valorFinalSugerido = montoSugerido !== undefined && montoSugerido !== null ? Math.min(Number(montoSugerido), saldoRealFactura) : (saldoRealFactura < 999999 ? saldoRealFactura : '');
+
+      var boxAviso = document.getElementById('box-aviso-cuota-pago');
+      var txtAviso = document.getElementById('txt-aviso-cuota-pago');
+      if (montoSugerido && Number(montoSugerido) > saldoRealFactura && saldoRealFactura > 0) {
+        boxAviso.style.display = 'block';
+        txtAviso.innerText = 'Cuota pactada: $' + Number(montoSugerido).toFixed(2) + ' • Saldo pendiente real con proveedor: $' + saldoRealFactura.toFixed(2) + '. Se sugiere pagar $' + saldoRealFactura.toFixed(2) + ' para cancelar la obligación.';
+      } else {
+        boxAviso.style.display = 'none';
+      }
 
       document.getElementById('cuota-monto').value = (valorFinalSugerido > 0) ? Number(valorFinalSugerido).toFixed(2) : '';
 
