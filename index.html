@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" class="raiet-bloqueado">
 <head>
 <script>
 // --- MOTOR AUTOMÁTICO DE COLA OFFLINE (OUTBOX) RAIET SUITE ---
@@ -74,7 +74,7 @@
     localStorage.setItem('raiet_cola_offline', JSON.stringify(pendientes));
     if (pendientes.length === 0) {
       console.log('✅ [Sync] Todo sincronizado con Supabase.');
-      if (typeof cargarTodo === 'function') setTimeout(cargarTodo, 600);
+      if (!document.documentElement.classList.contains('raiet-bloqueado') && typeof cargarTodo === 'function') setTimeout(cargarTodo, 600);
     }
   });
 })();
@@ -91,6 +91,16 @@
   <meta name="apple-mobile-web-app-title" content="Raiet Suite DEV">
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<!-- CONTROL DE ACCESO PRIVADO ESABAS -->
+<style>
+  html.raiet-bloqueado body > :not(#raiet-acceso) {
+    visibility: hidden !important;
+  }
+</style>
+<script src="./acceso-esabas.js"></script>
+<!-- FIN CONTROL DE ACCESO -->
+
   <style>
     :root {
       --bg: #080a10;
@@ -2462,7 +2472,7 @@
       cargarInventario();
       cargarPacientes();
     }
-    cargarTodo();
+    window.raietArrancar = cargarTodo;
   </script>
 </body>
 </html>
