@@ -727,25 +727,28 @@
     function procesarArchivoImagen(inputElement, callback) {
       var file = inputElement && inputElement.files ? inputElement.files[0] : null;
       if (!file) return callback(null);
-      var reader = new FileReader();
-      reader.onload = function(e) {
-        var img = new Image();
-        img.onload = function() {
-          var canvas = document.createElement('canvas');
-          var maxDim = 850;
-          var w = img.width, h = img.height;
-          if (w > h && w > maxDim) { h = Math.round((h * maxDim) / w); w = maxDim; }
-          else if (h > maxDim) { w = Math.round((w * maxDim) / h); h = maxDim; }
-          canvas.width = w; canvas.height = h;
-          var ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, w, h);
-          callback(canvas.toDataURL('image/jpeg', 0.72));
-        };
-        img.onerror = function() { callback(null); };
-        img.src = e.target.result;
-      };
-      reader.onerror = function() { callback(null); };
-      reader.readAsDataURL(file);
+      if (typeof window.esabasComprimirImagen !== 'function') {
+        alert('El optimizador de imágenes no está disponible. No se guardó el registro; vuelve a abrir RAIET.');
+        return;
+      }
+      window.esabasComprimirImagen(file, { perfil: 'comprobante' })
+        .then(function(resultado) {
+          var reader = new FileReader();
+          reader.onload = function() {
+            if (typeof reader.result !== 'string' || !reader.result.startsWith('data:image/')) {
+              alert('No se pudo convertir la fotografía optimizada. No se guardó el registro.');
+              return;
+            }
+            callback(reader.result);
+          };
+          reader.onerror = function() {
+            alert('No se pudo leer la fotografía optimizada. No se guardó el registro.');
+          };
+          reader.readAsDataURL(resultado.archivo);
+        })
+        .catch(function(err) {
+          alert('No se guardó el registro con imagen: ' + (err && err.message ? err.message : 'error al comprimir.'));
+        });
     }
 
     // --- MANEJO DE FILAS DINÁMICAS DE COMPROMISOS ---

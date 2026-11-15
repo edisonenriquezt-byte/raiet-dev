@@ -204,33 +204,94 @@ document.addEventListener("click",function(e){
  else if(b.dataset.esabasCancelar){var form=b.closest("form[data-esabas-form-editar]");if(form)form.remove();}
 });
 
-async function comprimirImagen(file){
- var salida={archivo:file,nombreOriginal:file.name,bytesOriginales:file.size};
- if(!file || !file.type || !file.type.startsWith("image/") || file.type==="image/svg+xml")return salida;
- var objUrl=null;
- try{
-  objUrl=URL.createObjectURL(file);
-  var img=new Image();
-  await new Promise(function(resolve,reject){img.onload=resolve;img.onerror=reject;img.src=objUrl;});
-  var max=1600,escala=Math.min(1,max/Math.max(img.naturalWidth,img.naturalHeight));
-  var canvas=document.createElement("canvas");canvas.width=Math.max(1,Math.round(img.naturalWidth*escala));
-  canvas.height=Math.max(1,Math.round(img.naturalHeight*escala));
-  var ctx=canvas.getContext("2d");
-  if(!ctx)throw new Error("Canvas no disponible");
-  ctx.fillStyle="#fff";ctx.fillRect(0,0,canvas.width,canvas.height);
-  ctx.drawImage(img,0,0,canvas.width,canvas.height);
-  var blob=await new Promise(function(resolve){canvas.toBlob(resolve,"image/jpeg",0.77);});
-  if(!blob)throw new Error("No se pudo comprimir");
-  if(blob.size>850000){
-   var segundo=await new Promise(function(resolve){canvas.toBlob(resolve,"image/jpeg",0.61);});
-   if(segundo && segundo.size<blob.size)blob=segundo;
+async function comprimirImagen(file, opciones) {
+  if (!file) throw new Error("No se seleccionó ningún archivo.");
+  var salida = { archivo: file, nombreOriginal: file.name, bytesOriginales: file.size };
+  var tipo = (file.type || "").toLowerCase();
+  var extensionImagen = /\.(jpe?g|png|webp|heic|heif|avif|bmp|gif|tif|tiff|svg)$/i.test(file.name || "");
+  var esImagen = tipo.startsWith("image/") || extensionImagen;
+  if (!esImagen) return salida; // PDF, Word y otros documentos no se alteran.
+  if (tipo === "image/svg+xml" || /\.svg$/i.test(file.name || "")) {
+    throw new Error("Las imágenes SVG no se admiten como evidencia; utiliza JPG, PNG o WEBP.");
   }
-  if(blob.size>=file.size)return salida;
-  var name=(file.name||"foto").replace(/\.[^.]*$/,"")+".jpg";
-  salida.archivo=new File([blob],name,{type:"image/jpeg",lastModified:Date.now()});
-  return salida;
- }catch(err){console.warn("No se pudo optimizar esta foto; se utilizará el original.",err);return salida;}
- finally{if(objUrl)URL.revokeObjectURL(objUrl);}
+
+  var url = null;
+  try {
+    url = URL.createObjectURL(file);
+    var img = new Image();
+    await new Promise(function(resolve, reject) {
+      img.onload = resolve;
+      img.onerror = function() { reject(new Error("No se puede abrir la fotografía. Conviértela a JPG o PNG antes de subirla.")); };
+      img.src = url;
+    });
+    var ancho = img.naturalWidth, alto = img.naturalHeight;
+    if (!ancho || !alto || ancho * alto > 75000000) {
+      throw new Error("La fotografía tiene dimensiones inválidas o demasiado grandes.");
+    }
+
+    // Comprobantes: menor peso. Expedientes: más resolución para preservar texto.
+    var comprobante = !!(opciones && opciones.perfil === "comprobante");
+    var maxLado = comprobante ? 1450 : 1900;
+    var objetivoBytes = comprobante ? 260000 : 500000;
+    var escalas = [1, 0.87];
+    var formatos = [
+      { tipo: "image/webp", calidades: [0.76, 0.66, 0.60] },
+      { tipo: "image/jpeg", calidades: [0.73, 0.64, 0.58] }
+    ];
+    var mejor = null;
+    var archivoOriginalApto = /^(image\/jpeg|image\/png|image\/webp)$/i.test(tipo);
+    if (archivoOriginalApto) {
+      mejor = { archivo: file, bytes: file.size, original: true };
+    }
+
+    var tamañoBase = Math.min(1, maxLado / Math.max(ancho, alto));
+    for (var i = 0; i < escalas.length; i++) {
+      var factor = tamañoBase * escalas[i];
+      var canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(ancho * factor));
+      canvas.height = Math.max(1, Math.round(alto * factor));
+      var ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("El dispositivo no permite comprimir imágenes.");
+      ctx.fillStyle = "#ffffff"; // Fondo blanco para legibilidad y transparencia.
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+      for (var f = 0; f < formatos.length; f++) {
+        for (var k = 0; k < formatos[f].calidades.length; k++) {
+          var mime = formatos[f].tipo;
+          var quality = formatos[f].calidades[k];
+          var blob = await new Promise(function(resolve) {
+            canvas.toBlob(resolve, mime, quality);
+          });
+          if (!blob || blob.type !== mime) continue; // Codificador no compatible.
+          if (!mejor || blob.size < mejor.bytes) {
+            mejor = { archivo: blob, bytes: blob.size, original: false, mime: mime };
+          }
+        }
+      }
+      canvas.width = 0;
+      canvas.height = 0;
+      // Si alcanzamos un tamaño económico sin sacrificar más resolución, basta.
+      if (mejor && mejor.bytes <= objetivoBytes) break;
+    }
+
+    if (!mejor || !mejor.archivo) {
+      throw new Error("No fue posible optimizar esta imagen en tu dispositivo.");
+    }
+    if (mejor.original) return salida; // Ya ocupa menos que cualquier versión recomprimida.
+    var nombre = (file.name || "imagen").replace(/\.[^.]*$/, "");
+    var ext = mejor.mime === "image/webp" ? ".webp" : ".jpg";
+    salida.archivo = new File([mejor.archivo], nombre + ext, {
+      type: mejor.mime, lastModified: Date.now()
+    });
+    salida.bytesGuardados = salida.archivo.size;
+    return salida;
+  } catch (err) {
+    // Sin guardar imágenes gigantes silenciosamente cuando falle la conversión.
+    throw new Error(err && err.message ? err.message : "Error al comprimir la imagen.");
+  } finally {
+    if (url) URL.revokeObjectURL(url);
+  }
 }
 window.esabasComprimirImagen=comprimirImagen;
 // Mantener las alertas al día mientras la aplicación está abierta.
