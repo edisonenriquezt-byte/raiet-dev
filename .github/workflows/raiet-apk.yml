@@ -115,7 +115,7 @@ jobs:
 
           cat > capacitor.config.json <<'EOF'
           {
-            "appId": "com.esabas.raietdev",
+            "appId": "com.esabas.raiet",
             "appName": "RAIET ESABAS",
             "webDir": "www",
             "android": {
@@ -126,6 +126,10 @@ jobs:
 
           echo "Creando proyecto Android..."
           npx cap add android
+
+          echo "Verificando identificador Android definitivo..."
+          grep -q '"appId": "com.esabas.raiet"' capacitor.config.json
+          grep -q 'applicationId "com.esabas.raiet"' android/app/build.gradle || grep -q "applicationId 'com.esabas.raiet'" android/app/build.gradle
 
           echo "Corrigiendo icono nativo de Android con el logo RAIET ya existente..."
           python3 -m venv .raiet-icon-venv
@@ -239,7 +243,7 @@ jobs:
           gh release create "$TAG" RAIET-ESABAS.apk \
             --repo "$REPO" \
             --target "$GITHUB_SHA" \
-            --title "RAIET ESABAS Android · Logo original corregido" \
-            --notes "APK Android con el ícono oficial de RAIET en todos los tamaños nativos, verificado dentro del paquete. Conserva los módulos funcionales anteriores. Firmada como debug; si la versión instalada tiene otra firma, Android puede rechazar la actualización." \
+            --title "RAIET ESABAS Android · Instalación sin conflicto" \
+            --notes "APK Android con el logotipo original de RAIET y el identificador definitivo com.esabas.raiet. Se instala como aplicación separada de la edición anterior com.esabas.raietdev para evitar conflicto de firma, sin desinstalar ni borrar datos locales antiguos. Incluye todos los módulos ya publicados. Firma de compilación temporal; para futuras actualizaciones es necesario establecer firma permanente." \
             --latest
           echo "DESCARGA_DIRECTA: https://github.com/$REPO/releases/latest/download/RAIET-ESABAS.apk"
