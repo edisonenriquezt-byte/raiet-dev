@@ -3,6 +3,11 @@ name: Crear APK Android RAIET ESABAS
 
 on:
   workflow_dispatch:
+  workflow_run:
+    workflows:
+      - pages build and deployment
+    types:
+      - completed
   push:
     branches:
       - main
