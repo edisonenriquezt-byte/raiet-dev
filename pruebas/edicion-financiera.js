@@ -123,6 +123,8 @@
       try {
         if (area === "cobro" && typeof window.cargarCobros === "function") await window.cargarCobros();
         if (area === "pago" && typeof window.cargarPagos === "function") await window.cargarPagos();
+        // Cobros recarga también los compromisos utilizados por ambos módulos.
+        if (area === "pago" && typeof window.cargarCobros === "function") await window.cargarCobros();
         if (typeof window.esabasCargarExpedientes === "function") await window.esabasCargarExpedientes();
       } catch (e) {refreshError = e;}
       let msg = "Movimiento corregido y registrado en el historial. Saldo de la obligación recalculado.";
