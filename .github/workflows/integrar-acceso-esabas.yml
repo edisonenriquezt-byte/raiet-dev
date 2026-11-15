@@ -1,0 +1,183 @@
+
+name: Integrar acceso privado ESABAS
+
+on:
+  push:
+    branches:
+      - esabas-acceso-privado-v1
+    paths:
+      - ".github/workflows/integrar-acceso-esabas.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  integrar:
+    name: Proteger inicio de RAIET Dev
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Obtener rama de desarrollo
+        uses: actions/checkout@v4
+        with:
+          ref: esabas-acceso-privado-v1
+          persist-credentials: true
+
+      - name: Integrar inicio de sesion
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          archivo = Path("index.html")
+          seguridad = Path("acceso-esabas.js")
+
+          if not archivo.exists():
+              raise SystemExit(
+                  "ERROR: No se encontro index.html"
+              )
+
+          if not seguridad.exists():
+              raise SystemExit(
+                  "ERROR: No se encontro acceso-esabas.js"
+              )
+
+          codigo = archivo.read_text(encoding="utf-8")
+
+          # 1. Bloquear pantalla desde el primer momento.
+          original = '<html lang="es">'
+          protegido = (
+              '<html lang="es" class="raiet-bloqueado">'
+          )
+
+          if protegido not in codigo:
+              if codigo.count(original) != 1:
+                  raise SystemExit(
+                      "ERROR: No se encontro la etiqueta HTML original"
+                  )
+
+              codigo = codigo.replace(
+                  original,
+                  protegido,
+                  1
+              )
+
+          # 2. Incorporar el archivo de autenticacion.
+          libreria = (
+              '<script src="https://cdn.jsdelivr.net/npm/'
+              '@supabase/supabase-js@2"></script>'
+          )
+
+          integracion = """
+          <!-- CONTROL DE ACCESO PRIVADO ESABAS -->
+          <style>
+            html.raiet-bloqueado body > :not(#raiet-acceso) {
+              visibility: hidden !important;
+            }
+          </style>
+          <script src="./acceso-esabas.js"></script>
+          <!-- FIN CONTROL DE ACCESO -->
+          """
+
+          if '<script src="./acceso-esabas.js"></script>' not in codigo:
+              if codigo.count(libreria) != 1:
+                  raise SystemExit(
+                      "ERROR: No se encontro Supabase en index.html"
+                  )
+
+              codigo = codigo.replace(
+                  libreria,
+                  libreria + "\n" + integracion,
+                  1
+              )
+
+          # 3. Evitar que los modulos consulten datos
+          # antes de que el usuario inicie sesion.
+          arranque_original = (
+              "    cargarTodo();\n"
+              "  </script>\n"
+              "</body>"
+          )
+
+          arranque_protegido = (
+              "    window.raietArrancar = cargarTodo;\n"
+              "  </script>\n"
+              "</body>"
+          )
+
+          if arranque_protegido not in codigo:
+              if codigo.count(arranque_original) != 1:
+                  raise SystemExit(
+                      "ERROR: No se encontro el arranque original"
+                  )
+
+              codigo = codigo.replace(
+                  arranque_original,
+                  arranque_protegido,
+                  1
+              )
+
+          # 4. Impedir que una sincronizacion pendiente
+          # ejecute la carga de datos antes del acceso.
+          sincronizacion_original = (
+              "      if (typeof cargarTodo === 'function') "
+              "setTimeout(cargarTodo, 600);"
+          )
+
+          sincronizacion_protegida = (
+              "      if (!document.documentElement.classList"
+              ".contains('raiet-bloqueado') && "
+              "typeof cargarTodo === 'function') "
+              "setTimeout(cargarTodo, 600);"
+          )
+
+          if sincronizacion_original in codigo:
+              codigo = codigo.replace(
+                  sincronizacion_original,
+                  sincronizacion_protegida,
+                  1
+              )
+
+          # 5. Verificacion de los componentes esenciales.
+          comprobaciones = [
+              'class="raiet-bloqueado"',
+              'src="./acceso-esabas.js"',
+              'window.raietArrancar = cargarTodo',
+              'id="tab-agenda"',
+              'id="tab-cobros"',
+              'id="tab-pagos"',
+              'id="tab-inventario"',
+              'id="tab-pacientes"',
+          ]
+
+          for elemento in comprobaciones:
+              if elemento not in codigo:
+                  raise SystemExit(
+                      f"ERROR: Falta componente {elemento}"
+                  )
+
+          archivo.write_text(
+              codigo,
+              encoding="utf-8"
+          )
+
+          print("Integracion completada.")
+          print("Los cinco modulos originales se conservaron.")
+          print("El acceso privado se activo en la rama de pruebas.")
+          PY
+
+      - name: Guardar index.html actualizado
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email \
+            "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add index.html
+
+          if git diff --cached --quiet; then
+            echo "No hay cambios pendientes."
+          else
+            git commit -m "Integrar acceso privado ESABAS"
+            git push origin HEAD:esabas-acceso-privado-v1
+          fi
