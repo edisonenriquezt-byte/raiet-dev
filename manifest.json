@@ -1,7 +1,7 @@
 {
-  "name": "Raiet Suite DEV",
-  "short_name": "Raiet DEV",
-  "description": "Suite de Gestión Integral Raiet Suite DEV",
+  "name": "RAIET ESABAS | Gestión Integral",
+  "short_name": "RAIET ESABAS",
+  "description": "Aplicación privada RAIET ESABAS: clientes, asuntos jurídicos, agenda, cobros, pagos, inventario y pacientes.",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#080a10",
