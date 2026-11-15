@@ -99,7 +99,7 @@
   }
 </style>
 <script src="./raiet-native.js"></script>
-<script src="./acceso-esabas.js?v=20261115-19"></script>
+<script src="./acceso-esabas.js?v=20261115-20"></script>
 <!-- FIN CONTROL DE ACCESO -->
 
   <style>
@@ -643,7 +643,7 @@
 
   <script>
     if ('serviceWorker' in navigator) {
-      if (location.protocol==='https:') navigator.serviceWorker.register('./sw.js?v=20261115-19',{updateViaCache:'none'}).catch(function(err) { console.log('SW error:', err); });
+      if (location.protocol==='https:') navigator.serviceWorker.register('./sw.js?v=20261115-20',{updateViaCache:'none'}).catch(function(err) { console.log('SW error:', err); });
     }
 
     var SUPABASE_URL = 'https://fwkdtcecdwxezzkphxiv.supabase.co';
@@ -2794,7 +2794,13 @@
   async function subirAdjunto(actuacionId, archivo) {
     if(!archivo) return;
     validarActivo();
-    const preparado=typeof window.esabasComprimirImagen === 'function' ? await window.esabasComprimirImagen(archivo) : {archivo:archivo,nombreOriginal:archivo.name,bytesOriginales:archivo.size};
+    const esImagenAdjunta=/^image\//i.test(archivo.type||'') || /\.(jpe?g|png|webp|heic|heif|avif|bmp|gif|tiff?|svg)$/i.test(archivo.name||'');
+    if(esImagenAdjunta && typeof window.esabasComprimirImagen!=='function') {
+      throw new Error('No se cargó el compresor de fotografías. No se ha subido la imagen. Actualiza RAIET e inténtalo de nuevo.');
+    }
+    const preparado=typeof window.esabasComprimirImagen === 'function'
+      ? await window.esabasComprimirImagen(archivo)
+      : {archivo:archivo,nombreOriginal:archivo.name,bytesOriginales:archivo.size};
     archivo=preparado.archivo;
     if(archivo.size>15*1024*1024) throw new Error('Archivo demasiado grande incluso después de optimizarlo. Límite: 15 MB.');
     const act=state.actuaciones.find(x=>idIgual(x.id,actuacionId));

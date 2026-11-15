@@ -1,9 +1,9 @@
-const CACHE_NAME = 'raiet-esabas-archivos-sesion-v19-20261115';
+const CACHE_NAME = 'raiet-esabas-compresion-verificada-v20-20261115';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './manifest.json',
-  './acceso-esabas.js?v=20261115-19',
+  './acceso-esabas.js?v=20261115-20',
   './raiet-native.js',
   './mejoras.js?v=20261115-19',
   './edicion-financiera.js?v=20261115-19',
