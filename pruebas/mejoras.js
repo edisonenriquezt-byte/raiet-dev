@@ -175,4 +175,13 @@ async function comprimirImagen(file){
  finally{if(objUrl)URL.revokeObjectURL(objUrl);}
 }
 window.esabasComprimirImagen=comprimirImagen;
+// Mantener las alertas al día mientras la aplicación está abierta.
+if(typeof window.setInterval==="function"){
+ window.setInterval(function(){
+  if(!document.documentElement.classList.contains("raiet-bloqueado") && typeof window.actualizarPanelAlertas==="function")window.actualizarPanelAlertas();
+ },120000);
+}
+document.addEventListener("visibilitychange",function(){
+ if(!document.hidden && !document.documentElement.classList.contains("raiet-bloqueado") && typeof window.actualizarPanelAlertas==="function")window.actualizarPanelAlertas();
+});
 })();
