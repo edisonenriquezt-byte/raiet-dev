@@ -18,7 +18,7 @@ on:
       - "icon-512.png"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   compilar-apk:
@@ -226,3 +226,20 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+
+      - name: Publicar APK corregida en GitHub Releases
+        if: github.ref == 'refs/heads/main'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          TAG: raiet-esabas-android-${{ github.run_number }}
+        run: |
+          set -e
+          gh release create "$TAG" RAIET-ESABAS.apk \
+            --repo "$REPO" \
+            --target "$GITHUB_SHA" \
+            --title "RAIET ESABAS Android · Logo original corregido" \
+            --notes "APK Android con el ícono oficial de RAIET en todos los tamaños nativos, verificado dentro del paquete. Conserva los módulos funcionales anteriores. Firmada como debug; si la versión instalada tiene otra firma, Android puede rechazar la actualización." \
+            --latest
+          echo "DESCARGA_DIRECTA: https://github.com/$REPO/releases/latest/download/RAIET-ESABAS.apk"
