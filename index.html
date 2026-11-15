@@ -2812,11 +2812,76 @@
     }
   }
   async function abrirAdjunto(id) {
-    const a=state.adjuntos.find(x=>idIgual(x.id,id));if(!a)return;
-    const res=await db().storage.from(BUCKET).createSignedUrl(a.ruta_storage,120);
-    if(res.error) throw new Error('No se pudo abrir el archivo: '+res.error.message);
-    const p=el('esabas-mensaje');p.textContent='Documento listo: ';
-    const l=document.createElement('a');l.href=res.data.signedUrl;l.target='_blank';l.rel='noopener noreferrer';l.textContent='Abrir '+(a.nombre_archivo||'documento');l.style.color='#7dd3fc';p.appendChild(l);
+    const a=state.adjuntos.find(x=>idIgual(x.id,id));
+    if(!a) throw new Error('No se encontró el adjunto en la ficha. Actualiza los expedientes e inténtalo de nuevo.');
+    validarActivo();
+    // Solo la sesión del administrador puede generar enlaces temporales de este bucket privado.
+    const res=await db().storage.from(BUCKET).createSignedUrl(a.ruta_storage,600);
+    if(res.error || !res.data?.signedUrl) {
+      throw new Error('No se pudo abrir el archivo privado: '+(res.error?.message||'sin enlace de acceso'));
+    }
+    const url=res.data.signedUrl;
+    document.getElementById('esabas-visor-adjunto')?.remove();
+    const visor=document.createElement('div');
+    visor.id='esabas-visor-adjunto';
+    visor.setAttribute('role','dialog');
+    visor.setAttribute('aria-modal','true');
+    visor.setAttribute('aria-label','Vista previa de archivo adjunto');
+    visor.tabIndex=-1;
+    visor.style.cssText='position:fixed;inset:0;z-index:2147483000;background:rgba(0,0,0,.94);display:flex;align-items:center;justify-content:center;padding:12px;box-sizing:border-box;';
+    const panel=document.createElement('div');
+    panel.style.cssText='width:100%;max-width:1000px;max-height:95vh;min-height:180px;background:#101827;border:1px solid #334155;border-radius:12px;padding:14px;box-sizing:border-box;display:flex;flex-direction:column;gap:12px;color:#fff;overflow:auto;';
+    const cabecera=document.createElement('div');
+    cabecera.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:10px;';
+    const titulo=document.createElement('strong');
+    titulo.textContent=a.nombre_archivo||'Documento adjunto';
+    titulo.style.cssText='overflow-wrap:anywhere;font-size:14px;';
+    const cerrar=document.createElement('button');
+    cerrar.type='button';cerrar.textContent='✕ Cerrar';
+    cerrar.style.cssText='border:1px solid #64748b;background:#1e293b;color:#fff;padding:9px 12px;border-radius:8px;flex-shrink:0;cursor:pointer;';
+    cerrar.addEventListener('click',function(){visor.remove();});
+    cabecera.append(titulo,cerrar);panel.appendChild(cabecera);
+    const mime=(a.tipo_archivo||'').toLowerCase();
+    const nombre=(a.nombre_archivo||'').toLowerCase();
+    const esImagen=mime.startsWith('image/') || /\.(png|jpe?g|webp|gif|bmp|avif)$/.test(nombre);
+    const esPdf=mime==='application/pdf' || /\.pdf$/.test(nombre);
+    if(esImagen){
+      const imagen=document.createElement('img');
+      imagen.src=url;imagen.alt='Vista previa: '+(a.nombre_archivo||'fotografía');
+      imagen.style.cssText='max-width:100%;max-height:70vh;object-fit:contain;align-self:center;border-radius:4px;';
+      imagen.onerror=function(){
+        imagen.remove();
+        const aviso=document.createElement('p');
+        aviso.textContent='No se pudo mostrar la vista previa. Utiliza «Abrir o descargar» para acceder al archivo.';
+        panel.appendChild(aviso);
+      };
+      panel.appendChild(imagen);
+    } else if(esPdf){
+      const marco=document.createElement('iframe');
+      marco.src=url;marco.title='Vista previa PDF';
+      marco.style.cssText='width:100%;height:68vh;min-height:240px;background:#fff;border:0;border-radius:5px;';
+      panel.appendChild(marco);
+    } else {
+      const aviso=document.createElement('p');
+      aviso.textContent='Este tipo de documento se abre con otra aplicación. Pulsa «Abrir o descargar».';
+      panel.appendChild(aviso);
+    }
+    const enlace=document.createElement('a');
+    enlace.href=url;enlace.target='_blank';enlace.rel='noopener noreferrer';
+    enlace.textContent='Abrir o descargar';
+    enlace.style.cssText='display:inline-block;align-self:flex-start;background:#2563eb;color:#fff;text-decoration:none;border-radius:8px;padding:10px 16px;font-weight:700;';
+    enlace.addEventListener('click',async function(event){
+      const nativo=window.RAIET_NATIVE;
+      if(nativo?.enabled && nativo.browser?.open){
+        event.preventDefault();
+        try{await nativo.browser.open({url:url});}
+        catch(err){window.alert('No se pudo abrir el documento fuera de RAIET: '+(err?.message||'error del navegador'));}
+      }
+    });
+    panel.appendChild(enlace);visor.appendChild(panel);document.body.appendChild(visor);
+    visor.addEventListener('click',function(event){if(event.target===visor)visor.remove();});
+    visor.addEventListener('keydown',function(event){if(event.key==='Escape')visor.remove();});
+    visor.focus();
   }
   async function manejarSubmit(e) {
     const form=e.target;if(!form.id?.startsWith('esabas-'))return;
@@ -2899,7 +2964,13 @@
         case 'adjuntar':{
           const d=el('esabas-adjuntar-'+id);d.innerHTML=`<form id="esabas-adjunto-form-${esc(id)}" class="esabas-form esabas-adjunto-form" data-actuacion-id="${esc(id)}"><label>Documento<input type="file" name="archivo" required accept="image/*,.pdf,.doc,.docx,.txt"></label><button type="submit" class="btn btn-primary">Subir archivo privado</button></form>`;break;
         }
-        case 'abrir-adjunto':await abrirAdjunto(id);break;
+        case 'abrir-adjunto':{
+          const texto=b.textContent;
+          b.disabled=true;b.textContent='Abriendo documento…';
+          try { await abrirAdjunto(id); }
+          finally { b.disabled=false;b.textContent=texto; }
+          break;
+        }
       }
     } catch(err) {console.error(err);setMessage(err.message,'error');}
   }
