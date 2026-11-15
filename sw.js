@@ -1,13 +1,14 @@
-const CACHE_NAME = 'raiet-esabas-compresion-verificada-v20-20261115';
+const CACHE_NAME = 'raiet-esabas-sin-falsos-guardados-v21-20261115';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './manifest.json',
-  './acceso-esabas.js?v=20261115-20',
+  './acceso-esabas.js?v=20261115-21',
   './raiet-native.js',
-  './mejoras.js?v=20261115-19',
-  './edicion-financiera.js?v=20261115-19',
-  './raiet-interacciones.js?v=20261115-19',
+  './mejoras.js?v=20261115-21',
+  './edicion-financiera.js?v=20261115-21',
+  './raiet-interacciones.js?v=20261115-21',
+  './raiet-respaldo.js?v=20261115-21',
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'
 ];
 

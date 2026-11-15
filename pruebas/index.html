@@ -2,80 +2,108 @@
 <html lang="es" class="raiet-bloqueado">
 <head>
 <script>
-// --- MOTOR AUTOMÁTICO DE COLA OFFLINE (OUTBOX) RAIET SUITE ---
+// RAIET ESABAS — proteger movimientos: NUNCA simular una respuesta 200.
 (function() {
-  const _origFetch = window.fetch;
+  "use strict";
+  const originalFetch = window.fetch.bind(window);
+  const COLA_ANTIGUA = "raiet_cola_offline";
+  const CLAVE_FALLO = "raiet_sincronizacion_no_confirmada";
+  const clonarMetodo = (resource, init) => String(init?.method || resource?.method || "GET").toUpperCase();
+  const esMovimiento = (url, metodo) =>
+    typeof url === "string" && /\.supabase\.co\/(?:rest\/v1\/|storage\/v1\/)/.test(url)
+    && ["POST","PATCH","PUT","DELETE"].includes(metodo);
+  let aviso = null;
 
-  function headersToObj(headers) {
-    if (!headers) return {};
-    if (headers instanceof Headers) {
-      const obj = {};
-      headers.forEach((v, k) => { obj[k] = v; });
-      return obj;
-    }
-    return headers;
-  }
-
-  function encolarOffline(url, init) {
+  function colaPendiente() {
     try {
-      const cola = JSON.parse(localStorage.getItem('raiet_cola_offline') || '[]');
-      cola.push({
-        url: typeof url === 'string' ? url : url.url,
-        method: (init?.method || 'GET').toUpperCase(),
-        headers: headersToObj(init?.headers),
-        body: init?.body || null,
-        fecha: Date.now()
-      });
-      localStorage.setItem('raiet_cola_offline', JSON.stringify(cola));
-      console.log('📦 [Offline] Operación guardada en cola local:', init?.method, url);
-    } catch (e) {
-      console.error('Error guardando en cola offline:', e);
-    }
+      const array = JSON.parse(localStorage.getItem(COLA_ANTIGUA) || "[]");
+      return Array.isArray(array) ? array.length : 0;
+    } catch (_) { return 0; }
   }
-
-  window.fetch = async function(resource, init) {
-    const url = typeof resource === 'string' ? resource : resource?.url;
-    const method = (init?.method || 'GET').toUpperCase();
-    const esMutacionSupabase = url && url.includes('.supabase.co/rest/v1/') && (method === 'DELETE' || method === 'POST' || method === 'PATCH');
-
-    if (esMutacionSupabase) {
-      if (!navigator.onLine) {
-        encolarOffline(url, init);
-        return new Response(JSON.stringify([]), { status: 200, headers: { "Content-Type": "application/json" } });
-      }
-      try {
-        return await _origFetch(resource, init);
-      } catch (err) {
-        encolarOffline(url, init);
-        return new Response(JSON.stringify([]), { status: 200, headers: { "Content-Type": "application/json" } });
-      }
+  function sincronizacionDudosa() {
+    try { return sessionStorage.getItem(CLAVE_FALLO) === "1"; }
+    catch (_) { return false; }
+  }
+  function notificarFallo(texto) {
+    try { sessionStorage.setItem(CLAVE_FALLO, "1"); } catch (_) {}
+    console.warn("[RAIET] Operación de escritura no confirmada en Supabase.");
+    mostrarAviso(texto || "El servidor no confirmó el guardado. Revisa el registro antes de repetir la operación.");
+  }
+  function mostrarAviso(mensaje) {
+    if (!document.body) return;
+    if (!aviso || !aviso.isConnected) {
+      aviso = document.createElement("div");
+      aviso.id = "raiet-estado-sincronizacion";
+      aviso.setAttribute("role", "alert");
+      aviso.style.cssText = "position:sticky;top:0;z-index:999990;background:#7c2d12;color:#fff;padding:12px 16px;border:2px solid #f97316;font:13px Arial,sans-serif;line-height:1.45;text-align:center;box-shadow:0 5px 16px #0009;";
+      document.body.insertBefore(aviso, document.body.firstChild);
     }
-    return _origFetch(resource, init);
+    const cola = colaPendiente();
+    aviso.textContent = (mensaje || "Se detectó un guardado no confirmado.") +
+      " NO SE HA CONFIRMADO SU SINCRONIZACIÓN. No repitas cobros ni pagos hasta comprobarlos en el sistema." +
+      (cola ? " También existen "+cola+" movimientos de una cola antigua: NO se reenviarán automáticamente." : "");
+  }
+  window.RAIET_ESTADO_SINCRONIZACION = Object.freeze({
+    contarPendientesAntiguos: colaPendiente,
+    existeError: sincronizacionDudosa,
+    mostrarAviso
+  });
+
+  // El sistema antiguo devolvía HTTP 200 artificial y reintentaba movimientos:
+  // se elimina ese comportamiento para impedir confirmaciones falsas y duplicados.
+  window.fetch = async function(resource, init) {
+    const url = typeof resource === "string" ? resource : resource?.url;
+    const metodo = clonarMetodo(resource,init);
+    if (!esMovimiento(url,metodo)) return originalFetch(resource,init);
+    if (!navigator.onLine) {
+      notificarFallo("Sin internet: NO se guardó esta operación en Supabase.");
+      throw new TypeError("Sin conexión. La operación no se guardó en Supabase.");
+    }
+    try {
+      const respuesta = await originalFetch(resource,init);
+      if (!respuesta.ok) {
+        notificarFallo("Supabase devolvió un error al guardar (HTTP "+respuesta.status+").");
+      }
+      return respuesta;
+    } catch (e) {
+      notificarFallo("Se interrumpió la comunicación. No se pudo confirmar el guardado.");
+      throw e;
+    }
   };
 
-  window.addEventListener('online', async () => {
-    const raw = localStorage.getItem('raiet_cola_offline');
-    if (!raw) return;
-    const cola = JSON.parse(raw);
-    if (!cola || cola.length === 0) return;
-
-    console.log(`🔄 [Sync] Conexión recuperada. Enviando ${cola.length} pendientes a Supabase...`);
-    const pendientes = [];
-
-    for (const item of cola) {
-      try {
-        const resp = await _origFetch(item.url, { method: item.method, headers: item.headers, body: item.body });
-        if (!resp.ok && resp.status >= 500) pendientes.push(item);
-      } catch (e) {
-        pendientes.push(item);
-      }
+  function bloquearEvento(e) {
+    if (navigator.onLine) return;
+    if (e.type === "submit") {
+      e.preventDefault();e.stopImmediatePropagation();
+      mostrarAviso("Modo sin conexión: los formularios son de solo consulta. NO se guardó nada.");
+      return;
     }
-
-    localStorage.setItem('raiet_cola_offline', JSON.stringify(pendientes));
-    if (pendientes.length === 0) {
-      console.log('✅ [Sync] Todo sincronizado con Supabase.');
-      if (!document.documentElement.classList.contains('raiet-bloqueado') && typeof cargarTodo === 'function') setTimeout(cargarTodo, 600);
+    const boton = e.target?.closest?.("button, input[type=button], input[type=submit]");
+    if (!boton) return;
+    const accion = boton.getAttribute("onclick") || boton.getAttribute("data-legal") ||
+      boton.getAttribute("data-fin-edit") || "";
+    if (/\b(guardar|confirmar|borrar|eliminar|registrar|toggleAgenda|editar|modificar|subir)\b/i.test(accion) ||
+      /(?:guardar|confirmar|borrar|eliminar|registrar|toggleAgenda|editar|modificar|subir)[A-Z(]/.test(accion) ||
+      boton.type === "submit") {
+      e.preventDefault();e.stopImmediatePropagation();
+      mostrarAviso("Modo sin conexión: no se ejecutó la operación. Conéctate e inténtalo de nuevo.");
     }
+  }
+
+  document.addEventListener("click",bloquearEvento,true);
+  document.addEventListener("submit",bloquearEvento,true);
+  document.addEventListener("DOMContentLoaded",function() {
+    const n = colaPendiente();
+    if (n) mostrarAviso("Atención: hay movimientos pendientes de una versión antigua sin confirmación de envío.");
+    else if (sincronizacionDudosa()) mostrarAviso("La última sesión tuvo al menos un movimiento sin confirmación.");
+    window.addEventListener("offline",function() {
+      mostrarAviso("SIN CONEXIÓN: solo lectura. El guardado se bloqueará hasta recuperar internet.");
+    });
+    window.addEventListener("online",function() {
+      if (colaPendiente() || sincronizacionDudosa())
+        mostrarAviso("Volvió la conexión, pero RAIET NO enviará automáticamente movimientos anteriores; revísalos antes de repetirlos.");
+      else if (aviso) { aviso.remove(); aviso=null; }
+    });
   });
 })();
 </script>  
@@ -977,7 +1005,7 @@
 
   <script>
     if ('serviceWorker' in navigator) {
-      if (location.protocol==='https:') navigator.serviceWorker.register('./sw.js?v=20261115-20',{updateViaCache:'none'}).catch(function(err) { console.log('SW error:', err); });
+      if (location.protocol==='https:') navigator.serviceWorker.register('./sw.js?v=20261115-21',{updateViaCache:'none'}).catch(function(err) { console.log('SW error:', err); });
     }
 
     var SUPABASE_URL = 'https://fwkdtcecdwxezzkphxiv.supabase.co';
@@ -3380,8 +3408,9 @@
 })();
 
 </script>
-<script src="./mejoras.js?v=20261115-19"></script>
-<script src="./edicion-financiera.js?v=20261115-19"></script>
-<script src="../raiet-interacciones.js?v=20261115-19"></script>
+<script src="./mejoras.js?v=20261115-21"></script>
+<script src="./edicion-financiera.js?v=20261115-21"></script>
+<script src="../raiet-interacciones.js?v=20261115-21"></script>
+<script src="../raiet-respaldo.js?v=20261115-21"></script>
 </body>
 </html>
