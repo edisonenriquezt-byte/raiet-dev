@@ -8,13 +8,21 @@ on:
       - main
     paths:
       - ".github/workflows/raiet-apk.yml"
+      - "index.html"
+      - "acceso-esabas.js"
+      - "mejoras.js"
+      - "edicion-financiera.js"
+      - "manifest.json"
+      - "sw.js"
+      - "icon-192.png"
+      - "icon-512.png"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   compilar-apk:
-    name: Compilar APK de pruebas
+    name: Compilar APK instalable RAIET ESABAS
     runs-on: ubuntu-24.04
 
     steps:
@@ -91,10 +99,19 @@ jobs:
 
           cp index.html www/
           cp acceso-esabas.js www/
+          cp mejoras.js www/
+          cp edicion-financiera.js www/
           cp manifest.json www/
           cp sw.js www/
           cp icon-192.png www/
           cp icon-512.png www/
+
+          echo "Verificando componentes instalables..."
+          grep -q 'RAIET ESABAS' www/index.html
+          grep -q 'mejoras.js?v=final-20261115' www/index.html
+          grep -q 'edicion-financiera.js?v=final-20261115' www/index.html
+          node --check www/mejoras.js
+          node --check www/edicion-financiera.js
 
           cat > capacitor.config.json <<'EOF'
           {
@@ -137,11 +154,30 @@ jobs:
 
           echo "APK generada correctamente:"
           ls -lh "$APK"
+          cp "$APK" RAIET-ESABAS.apk
+          sha256sum RAIET-ESABAS.apk
 
       - name: Publicar APK para instalar
         uses: actions/upload-artifact@v4
         with:
           name: RAIET-ESABAS-Android-APK
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: RAIET-ESABAS.apk
           if-no-files-found: error
           retention-days: 30
+
+      - name: Publicar APK de descarga directa
+        if: github.ref == 'refs/heads/main'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          TAG: raiet-esabas-android-${{ github.run_number }}
+        run: |
+          set -e
+          gh release create "$TAG" RAIET-ESABAS.apk \
+            --repo "$REPO" \
+            --target "$GITHUB_SHA" \
+            --title "RAIET ESABAS Android · compilación ${{ github.run_number }}" \
+            --notes "APK Android instalable de RAIET ESABAS, generada desde la versión web oficial en el repositorio. Incluye clientes, asuntos jurídicos, agenda, cobros, pagos, edición auditada y compresión de fotografías. Compilación debug firmada automáticamente para instalación de prueba; no es una versión firmada para Google Play." \
+            --latest
+          echo "Enlace permanente: https://github.com/$REPO/releases/latest/download/RAIET-ESABAS.apk"
