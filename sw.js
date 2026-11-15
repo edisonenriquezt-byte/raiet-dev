@@ -1,12 +1,13 @@
-const CACHE_NAME = 'raiet-esabas-huella-v3-20261115';
+const CACHE_NAME = 'raiet-esabas-interacciones-v18-20261115';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './manifest.json',
   './acceso-esabas.js',
   './raiet-native.js',
-  './mejoras.js?v=final-20261115',
-  './edicion-financiera.js?v=final-20261115',
+  './mejoras.js?v=20261115-18',
+  './edicion-financiera.js?v=20261115-18',
+  './raiet-interacciones.js?v=20261115-18',
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'
 ];
 

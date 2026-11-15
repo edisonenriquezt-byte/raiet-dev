@@ -977,7 +977,7 @@
 
   <script>
     if ('serviceWorker' in navigator) {
-      if (location.protocol==='https:') navigator.serviceWorker.register('./sw.js').catch(function(err) { console.log('SW error:', err); });
+      if (location.protocol==='https:') navigator.serviceWorker.register('./sw.js?v=20261115-18',{updateViaCache:'none'}).catch(function(err) { console.log('SW error:', err); });
     }
 
     var SUPABASE_URL = 'https://fwkdtcecdwxezzkphxiv.supabase.co';
@@ -3155,6 +3155,8 @@
       throw new Error('No se pudo abrir el archivo privado: '+(res.error?.message||'sin enlace de acceso'));
     }
     const url=res.data.signedUrl;
+    const viejo=el('esabas-mensaje');
+    if(viejo&&viejo.textContent.startsWith('Documento listo:'))viejo.textContent='';
     document.getElementById('esabas-visor-adjunto')?.remove();
     const visor=document.createElement('div');
     visor.id='esabas-visor-adjunto';
@@ -3253,7 +3255,8 @@
         // La actuación recién insertada todavía no estaba en state; sin esto
         // el primer archivo adjunto fallaba por "No se encontró la actuación".
         state.actuaciones.push(nuevo);
-        if(datos.archivo && datos.archivo.size) await subirAdjunto(nuevo.id,datos.archivo);
+        const imagen=typeof window.esabasArchivoSeleccionado==='function'?window.esabasArchivoSeleccionado(form):datos.archivo;
+        if(imagen&&imagen.size)await subirAdjunto(nuevo.id,imagen);
       } else if(form.id==='esabas-cargo-form') {
         const monto=Number(datos.monto);
         if(!Number.isFinite(monto)||monto<=0||!datos.concepto?.trim()) throw new Error('Ingresa concepto y monto mayor a cero.');
@@ -3265,8 +3268,9 @@
         nuevo=await guardar('agenda',{cliente_id:state.clienteId,asunto_id:state.asuntoId,titulo:datos.titulo.trim(),detalle:datos.detalle||null,fecha_evento:new Date(datos.fecha_evento).toISOString(),completada:false});
         if(typeof window.cargarAgenda==='function') await window.cargarAgenda();
       } else if(form.classList.contains('esabas-adjunto-form')) {
-        if(!datos.archivo?.size)throw new Error('Selecciona un documento.');
-        await subirAdjunto(form.dataset.actuacionId,datos.archivo);
+        const archivo=typeof window.esabasArchivoSeleccionado==='function'?window.esabasArchivoSeleccionado(form):datos.archivo;
+        if(!archivo?.size)throw new Error('Selecciona un documento, foto o captura.');
+        await subirAdjunto(form.dataset.actuacionId,archivo);
       }
       setMessage('Registro guardado correctamente en Supabase.','ok');
       await cargar();
@@ -3338,7 +3342,8 @@
 })();
 
 </script>
-<script src="./mejoras.js?v=20261115-2"></script>
-<script src="./edicion-financiera.js?v=20261115-1"></script>
+<script src="./mejoras.js?v=20261115-18"></script>
+<script src="./edicion-financiera.js?v=20261115-18"></script>
+<script src="./raiet-interacciones.js?v=20261115-18"></script>
 </body>
 </html>

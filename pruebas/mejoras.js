@@ -182,7 +182,7 @@ async function guardarEdicion(e){
    fecha_alarma:alarmaIso
   }).eq("id",aid).eq("asunto_id",previo.asunto_id).select().single();
   if(resp.error)throw resp.error;
-  var adjunto=datos.get("archivo");
+  var adjunto=typeof window.esabasArchivoSeleccionado==="function" ? window.esabasArchivoSeleccionado(f) : datos.get("archivo");
   if(adjunto && adjunto.size && typeof window.esabasSubirAdjunto==="function"){
    aviso.textContent="Actuación actualizada. Comprimiendo y subiendo adjunto…";
    await window.esabasSubirAdjunto(aid,adjunto);

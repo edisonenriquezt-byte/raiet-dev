@@ -15,6 +15,7 @@ on:
       - "raiet-native.js"
       - "mejoras.js"
       - "edicion-financiera.js"
+      - "raiet-interacciones.js"
       - "manifest.json"
       - "sw.js"
       - "icon-192.png"
@@ -94,6 +95,7 @@ jobs:
               "@capacitor/android": "8.0.0",
               "@capacitor/app": "8.0.0",
               "@capacitor/browser": "8.0.0",
+              "@capacitor/camera": "8.0.0",
               "@capgo/capacitor-native-biometric": "^8.6.0"
             },
             "devDependencies": {
@@ -113,6 +115,7 @@ jobs:
           cp acceso-esabas.js www/
           cp mejoras.js www/
           cp edicion-financiera.js www/
+          cp raiet-interacciones.js www/
           cp manifest.json www/
           cp sw.js www/
           cp icon-192.png www/
@@ -125,8 +128,9 @@ jobs:
 
           echo "Verificando componentes instalables..."
           grep -q 'RAIET ESABAS' www/index.html
-          grep -q 'mejoras.js?v=final-20261115' www/index.html
-          grep -q 'edicion-financiera.js?v=final-20261115' www/index.html
+          grep -q 'mejoras.js?v=20261115-18' www/index.html
+          grep -q 'edicion-financiera.js?v=20261115-18' www/index.html
+          node --check www/raiet-interacciones.js
           node --check www/mejoras.js
           node --check www/edicion-financiera.js
           node --check www/acceso-esabas.js
