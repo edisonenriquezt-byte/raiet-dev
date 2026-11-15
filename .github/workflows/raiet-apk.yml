@@ -304,22 +304,32 @@ jobs:
 
           echo "Verificando icono real incluido dentro de la APK..."
           .raiet-icon-venv/bin/python - <<'PY'
-          from PIL import Image, ImageChops
+          from PIL import Image, ImageChops, UnidentifiedImageError
           from io import BytesIO
           from zipfile import ZipFile
-          from pathlib import Path
 
           source = Image.open("www/icon-512.png").convert("RGBA")
+          inspected = 0
+          found = None
           with ZipFile("RAIET-ESABAS.apk") as apk:
-              names = apk.namelist()
-              icons = [name for name in names if name.endswith("mipmap-xxxhdpi-v4/ic_launcher.png")]
-              assert len(icons) == 1, "No se encuentra el icono nativo en la APK"
-              native = Image.open(BytesIO(apk.read(icons[0]))).convert("RGBA")
-              expected = source.resize(native.size, Image.Resampling.LANCZOS)
-              assert ImageChops.difference(native, expected).getbbox() is None, (
-                  "El icono de la APK no coincide con el logo original de RAIET"
-              )
-              print("CONFIRMADO: El icono instalado en Android corresponde a icon-512.png de RAIET.")
+              for name in apk.namelist():
+                  # Android optimiza los nombres y rutas de recursos en release.
+                  # Comparar contenido en píxeles en lugar de depender de la ruta.
+                  if not name.startswith("res/") or not name.lower().endswith((".png", ".webp")):
+                      continue
+                  try:
+                      native = Image.open(BytesIO(apk.read(name))).convert("RGBA")
+                  except (UnidentifiedImageError, OSError, ValueError):
+                      continue
+                  if native.width < 48 or native.width != native.height:
+                      continue
+                  inspected += 1
+                  expected = source.resize(native.size, Image.Resampling.LANCZOS)
+                  if ImageChops.difference(native, expected).getbbox() is None:
+                      found = name
+                      break
+          assert found, f"No se reconoció el logo original RAIET en los {inspected} recursos gráficos del APK"
+          print(f"CONFIRMADO: logo original RAIET incorporado al APK firmado ({found}).")
           PY
 
       - name: Publicar APK para instalar
