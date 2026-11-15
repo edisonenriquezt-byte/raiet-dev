@@ -10,6 +10,8 @@ on:
       - ".github/workflows/raiet-apk.yml"
       - "index.html"
       - "acceso-esabas.js"
+      - "raiet-native-entry.js"
+      - "raiet-native.js"
       - "mejoras.js"
       - "edicion-financiera.js"
       - "manifest.json"
@@ -22,7 +24,7 @@ permissions:
 
 jobs:
   compilar-apk:
-    name: Compilar APK instalable RAIET ESABAS
+    name: Compilar APK RAIET ESABAS con huella y actualizaciones
     runs-on: ubuntu-24.04
 
     steps:
@@ -72,6 +74,11 @@ jobs:
           echo "Android SDK preparado."
 
       - name: Preparar proyecto Android RAIET
+        env:
+          RAIET_ANDROID_KEYSTORE_B64: ${{ secrets.RAIET_ANDROID_KEYSTORE_B64 }}
+          RAIET_ANDROID_STORE_PASSWORD: ${{ secrets.RAIET_ANDROID_STORE_PASSWORD }}
+          RAIET_ANDROID_ALIAS: ${{ secrets.RAIET_ANDROID_ALIAS }}
+          RAIET_ANDROID_KEY_PASSWORD: ${{ secrets.RAIET_ANDROID_KEY_PASSWORD }}
         shell: bash
         run: |
           set -e
@@ -83,10 +90,14 @@ jobs:
             "private": true,
             "dependencies": {
               "@capacitor/core": "8.0.0",
-              "@capacitor/android": "8.0.0"
+              "@capacitor/android": "8.0.0",
+              "@capacitor/app": "8.0.0",
+              "@capacitor/browser": "8.0.0",
+              "@capgo/capacitor-native-biometric": "^8.6.0"
             },
             "devDependencies": {
-              "@capacitor/cli": "8.0.0"
+              "@capacitor/cli": "8.0.0",
+              "esbuild": "^0.25.0"
             }
           }
           EOF
@@ -106,16 +117,38 @@ jobs:
           cp icon-192.png www/
           cp icon-512.png www/
 
+          echo "Generando puente nativo Android con lector biométrico y comprobador de versiones..."
+          npx esbuild raiet-native-entry.js --bundle --platform=browser --format=iife --minify --outfile=www/raiet-native.js
+          test -s www/raiet-native.js
+          node --check www/raiet-native.js
+
           echo "Verificando componentes instalables..."
           grep -q 'RAIET ESABAS' www/index.html
           grep -q 'mejoras.js?v=final-20261115' www/index.html
           grep -q 'edicion-financiera.js?v=final-20261115' www/index.html
           node --check www/mejoras.js
           node --check www/edicion-financiera.js
+          node --check www/acceso-esabas.js
+          grep -q 'raiet-native.js' www/index.html
+          grep -q 'acceso-esabas.js' www/index.html
+          grep -q 'getSecureCredentials' www/acceso-esabas.js
 
-          cat > capacitor.config.json <<'EOF'
+          # Si aún no existen los secretos de firma, construimos una edición beta
+          # con paquete distinto; jamás reemplazamos la aplicación instalada.
+          if [ -n "${RAIET_ANDROID_KEYSTORE_B64:-}" ] \
+             && [ -n "${RAIET_ANDROID_STORE_PASSWORD:-}" ] \
+             && [ -n "${RAIET_ANDROID_ALIAS:-}" ] \
+             && [ -n "${RAIET_ANDROID_KEY_PASSWORD:-}" ]; then
+            echo "RAIET_SIGNED=true" >> "$GITHUB_ENV"
+            APK_ID="com.esabas.raiet"
+          else
+            echo "RAIET_SIGNED=false" >> "$GITHUB_ENV"
+            APK_ID="com.esabas.raiet.beta"
+          fi
+          echo "Construyendo variante Android: $APK_ID"
+          cat > capacitor.config.json <<EOF
           {
-            "appId": "com.esabas.raiet",
+            "appId": "$APK_ID",
             "appName": "RAIET ESABAS",
             "webDir": "www",
             "android": {
@@ -127,9 +160,24 @@ jobs:
           echo "Creando proyecto Android..."
           npx cap add android
 
-          echo "Verificando identificador Android definitivo..."
-          grep -q '"appId": "com.esabas.raiet"' capacitor.config.json
-          grep -q 'applicationId "com.esabas.raiet"' android/app/build.gradle || grep -q "applicationId 'com.esabas.raiet'" android/app/build.gradle
+          echo "Verificando identificador Android..."
+          grep -q "appId" capacitor.config.json
+          grep -q "applicationId" android/app/build.gradle
+
+          echo "Asignando número de versión para futuras actualizaciones..."
+          python3 - <<'PY'
+          from pathlib import Path
+          import os, re
+          gradle = Path("android/app/build.gradle")
+          text = gradle.read_text()
+          version = int(os.environ["GITHUB_RUN_NUMBER"])
+          text, n = re.subn(r"versionCode\s+\d+", f"versionCode {version}", text, count=1)
+          assert n == 1, "No se encontró versionCode"
+          text, n = re.subn(r'versionName\s+"[^"]+"', f'versionName "1.0.{version}"', text, count=1)
+          assert n == 1, "No se encontró versionName"
+          gradle.write_text(text)
+          print("Versión nativa:", version)
+          PY
 
           echo "Corrigiendo icono nativo de Android con el logo RAIET ya existente..."
           python3 -m venv .raiet-icon-venv
@@ -177,7 +225,48 @@ jobs:
 
           echo "Proyecto Android preparado."
 
+      - name: Configurar firma Android permanente (si existe)
+        shell: bash
+        env:
+          RAIET_ANDROID_KEYSTORE_B64: ${{ secrets.RAIET_ANDROID_KEYSTORE_B64 }}
+        run: |
+          set -e
+          if [ "$RAIET_SIGNED" = "true" ]; then
+            printf "%s" "$RAIET_ANDROID_KEYSTORE_B64" | base64 --decode > android/raiet-upload.jks
+            test -s android/raiet-upload.jks
+            python3 - <<'PY'
+          from pathlib import Path
+          p = Path("android/app/build.gradle")
+          text = p.read_text()
+          needle = "    buildTypes {"
+          assert text.count(needle) == 1, "No se encontró bloque buildTypes"
+          signed = """
+              signingConfigs {
+                  raiet {
+                      storeFile file('../raiet-upload.jks')
+                      storePassword System.getenv('RAIET_ANDROID_STORE_PASSWORD')
+                      keyAlias System.getenv('RAIET_ANDROID_ALIAS')
+                      keyPassword System.getenv('RAIET_ANDROID_KEY_PASSWORD')
+                  }
+              }
+              buildTypes {
+                  debug {
+                      signingConfig signingConfigs.raiet
+                  }
+          """
+          text = text.replace(needle, signed, 1)
+          p.write_text(text)
+          print("Gradle configurado con firma estable")
+          PY
+          else
+            echo "Modo prueba: APK firmada temporalmente con identificador beta."
+          fi
+
       - name: Compilar APK Android
+        env:
+          RAIET_ANDROID_STORE_PASSWORD: ${{ secrets.RAIET_ANDROID_STORE_PASSWORD }}
+          RAIET_ANDROID_ALIAS: ${{ secrets.RAIET_ANDROID_ALIAS }}
+          RAIET_ANDROID_KEY_PASSWORD: ${{ secrets.RAIET_ANDROID_KEY_PASSWORD }}
         working-directory: android
         shell: bash
         run: |
@@ -240,10 +329,15 @@ jobs:
           TAG: raiet-esabas-android-${{ github.run_number }}
         run: |
           set -e
+          if [ "$RAIET_SIGNED" = "true" ]; then
+            RAIET_RELEASE_FLAG="--latest"
+          else
+            RAIET_RELEASE_FLAG="--prerelease"
+          fi
           gh release create "$TAG" RAIET-ESABAS.apk \
             --repo "$REPO" \
             --target "$GITHUB_SHA" \
-            --title "RAIET ESABAS Android · Instalación sin conflicto" \
-            --notes "APK Android con el logotipo original de RAIET y el identificador definitivo com.esabas.raiet. Se instala como aplicación separada de la edición anterior com.esabas.raietdev para evitar conflicto de firma, sin desinstalar ni borrar datos locales antiguos. Incluye todos los módulos ya publicados. Firma de compilación temporal; para futuras actualizaciones es necesario establecer firma permanente." \
-            --latest
+            --title "RAIET ESABAS Android · Huella y actualizaciones" \
+            --notes "RAIET ESABAS con acceso biométrico protegido por Android Keystore y avisos de nuevas versiones. Las instalaciones firmadas permanentemente usan com.esabas.raiet; las beta sin firma permanente usan com.esabas.raiet.beta." \
+            ${RAIET_RELEASE_FLAG}
           echo "DESCARGA_DIRECTA: https://github.com/$REPO/releases/latest/download/RAIET-ESABAS.apk"
