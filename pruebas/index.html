@@ -2971,12 +2971,12 @@
     const q=(el('esabas-buscar')?.value||'').trim().toLowerCase();
     let lista=state.clientes.filter(c=>{
       let asuntos=state.asuntos.filter(a=>idIgual(a.cliente_id,c.id));
-      return [c.nombre,c.telefono,c.correo||c.email,c.direccion,...asuntos.flatMap(a=>[a.titulo,a.numero_proceso,a.servicio])].join(' ').toLowerCase().includes(q);
+      return [c.nombre,c.telefono,c.email,c.direccion,...asuntos.flatMap(a=>[a.titulo,a.numero_proceso,a.servicio])].join(' ').toLowerCase().includes(q);
     }).sort((a,b)=>String(a.nombre||'').localeCompare(String(b.nombre||''),'es'));
     destino.innerHTML=lista.length?lista.map(c=>{
       const n=state.asuntos.filter(a=>idIgual(a.cliente_id,c.id)).length;
       return `<div class="esabas-linea ${idIgual(state.clienteId,c.id)?'seleccionada':''}">
-        <b>${esc(c.nombre)}</b><div class="esabas-mini">${esc(c.telefono || c.correo || c.email || 'Sin contacto')} · ${n} asunto(s)</div>
+        <b>${esc(c.nombre)}</b><div class="esabas-mini">${esc(c.telefono || c.email || 'Sin contacto')} · ${n} asunto(s)</div>
         <div class="esabas-tools"><button class="btn btn-secondary" type="button" data-legal="ver-cliente" data-id="${esc(c.id)}">Abrir ficha</button></div></div>`;
     }).join(''):'<p class="esabas-mini" style="padding:12px">Sin clientes coincidentes. Puedes registrar uno desde «+ Cliente».</p>';
   }
@@ -2988,7 +2988,7 @@
     d.innerHTML=`<form id="esabas-cliente-form" class="esabas-form">
     <h3 style="margin:0">${c?'Actualizar ficha':'Registrar cliente'}</h3>
     ${input('nombre','Nombre completo *',c?.nombre||'')}
-    <div class="esabas-cols">${input('telefono','Teléfono',c?.telefono||'','tel')}${input('email','Correo',c?.correo||c?.email||'','email')}</div>
+    <div class="esabas-cols">${input('telefono','Teléfono',c?.telefono||'','tel')}${input('email','Correo',c?.email||'','email')}</div>
     ${input('direccion','Dirección',c?.direccion||'')}
     <label>Observaciones<textarea name="observaciones">${esc(c?.observaciones||'')}</textarea></label>
     <div class="esabas-tools"><button class="btn btn-primary" type="submit">Guardar ficha</button>
@@ -3011,7 +3011,7 @@
     const ap=state.agenda.filter(x=>idIgual(x.cliente_id,c.id));
     const cs=state.cuotas.filter(x=>idIgual(x.cliente_id,c.id));
     destino.innerHTML=`<div class="card"><div class="esabas-titulo">${esc(c.nombre)}</div>
-      <div class="esabas-mini">📞 ${esc(c.telefono||'—')} &nbsp; ✉ ${esc(c.correo||c.email||'—')}</div>
+      <div class="esabas-mini">📞 ${esc(c.telefono||'—')} &nbsp; ✉ ${esc(c.email||'—')}</div>
       <div class="esabas-mini">📍 ${esc(c.direccion||'Sin dirección')}</div>
       ${c.observaciones?`<p class="esabas-mini">${esc(c.observaciones)}</p>`:''}
       <div class="esabas-tools"><button type="button" class="btn btn-secondary" data-legal="editar-cliente">Editar cliente</button>
@@ -3041,7 +3041,7 @@
     d.innerHTML=`<form class="esabas-form" id="esabas-asunto-form">
       <h3 style="margin:0">${a?'Editar asunto':'Nuevo asunto jurídico'}</h3>
       ${input('titulo','Asunto / trámite *',a?.titulo||'')}
-      <div class="esabas-cols">${input('servicio','Área o servicio jurídico',a?.servicio||'')}${input('numero_proceso','N.º de proceso / referencia',a?.numero_proceso||'')}</div>
+      <div class="esabas-cols">${input('servicio','Área o servicio jurídico *',a?.servicio||'')}${input('numero_proceso','N.º de proceso / referencia',a?.numero_proceso||'')}</div>
       <div class="esabas-cols">${input('fecha_inicio','Fecha de inicio',a?.fecha_inicio||hoyLocal(),'date')}
         <label>Estado<select name="estado"><option value="activo" ${a?.estado==='activo'?'selected':''}>Activo</option><option value="en_espera" ${a?.estado==='en_espera'?'selected':''}>En espera</option><option value="cerrado" ${a?.estado==='cerrado'?'selected':''}>Cerrado</option></select></label></div>
       <label>Descripción y antecedentes<textarea name="descripcion">${esc(a?.descripcion||'')}</textarea></label>
@@ -3141,13 +3141,14 @@
         });
         if(duplicado) throw new Error('Ya existe un cliente con ese nombre. Abre su ficha y agrega el nuevo asunto.');
         const actual=state.clientes.find(c=>idIgual(c.id,state.clienteId));
-        nuevo=await guardar('clientes',{nombre:datos.nombre.trim(),telefono:datos.telefono||null,correo:datos.email||null,direccion:datos.direccion||null,observaciones:datos.observaciones||null},form.dataset.editar==='true'?actual?.id:null);
+        nuevo=await guardar('clientes',{nombre:datos.nombre.trim(),telefono:datos.telefono||null,email:datos.email||null,direccion:datos.direccion||null,observaciones:datos.observaciones||null},form.dataset.editar==='true'?actual?.id:null);
         state.clienteId=nuevo.id;state.asuntoId=null;el('esabas-form-cliente').hidden=true;el('esabas-form-cliente').innerHTML='';
         if(typeof window.cargarCobros==='function') await window.cargarCobros();
       } else if(form.id==='esabas-asunto-form') {
         if(!datos.titulo?.trim()) throw new Error('El asunto requiere un título.');
+        if(!datos.servicio?.trim()) throw new Error('El área o servicio jurídico es obligatorio.');
         const actual=state.asuntos.find(a=>idIgual(a.id,state.asuntoId));
-        const payload={cliente_id:state.clienteId,titulo:datos.titulo.trim(),servicio:datos.servicio||null,numero_proceso:datos.numero_proceso||null,fecha_inicio:datos.fecha_inicio||null,estado:datos.estado,descripcion:datos.descripcion||null};
+        const payload={cliente_id:state.clienteId,titulo:datos.titulo.trim(),servicio:datos.servicio.trim(),numero_proceso:datos.numero_proceso||null,fecha_inicio:datos.fecha_inicio||null,estado:datos.estado,descripcion:datos.descripcion||null};
         if(datos.estado==='cerrado' && actual?.estado!=='cerrado') payload.fecha_cierre=hoyLocal();
         if(datos.estado!=='cerrado' && actual?.estado==='cerrado')payload.fecha_cierre=null;
         nuevo=await guardar('asuntos',payload,form.dataset.editar==='true'?actual?.id:null);
