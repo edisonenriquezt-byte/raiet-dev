@@ -636,7 +636,7 @@
 
     <div id="panel-alertas" class="alerts-card">
       <div class="alerts-header">
-        <span class="alerts-title">🔔 Vencimientos y Citas (Próximas 72h)</span>
+        <span class="alerts-title">🔔 Vencimientos jurídicos y citas (7 días)</span>
         <span id="contador-alertas" class="alerts-badge">0</span>
       </div>
       <div id="lista-alertas" class="alerts-list"></div>
@@ -1277,6 +1277,7 @@
       var limite72h = new Date(hoy.getTime() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
       cacheAgenda.forEach(function(c) {
+        if(c.actuacion_id) return; // Evita avisos jurídicos duplicados
         if (!c.completada && (c.fecha_evento || c.fecha_alarma)) {
           var ref = c.fecha_alarma || c.fecha_evento;
           var fechaCita = ref.substring(0, 10);
@@ -1297,6 +1298,7 @@
         }
       });
 
+      if(typeof window.esabasAlertasPlazos === 'function') alertas.push(...window.esabasAlertasPlazos());
       var panel = document.getElementById('panel-alertas');
       var lista = document.getElementById('lista-alertas');
       var contador = document.getElementById('contador-alertas');
@@ -1430,19 +1432,23 @@
       var html = '';
       for (var i = 0; i < lista.length; i++) {
         var x = lista[i];
+        var seguro = function(v) {return String(v||'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});};
+        var tituloSeguro=seguro(x.titulo),detalleSeguro=seguro(x.detalle);
         var txtAlarma = x.fecha_alarma ? ' • <span style="color:#fbbf24;">🔔 Alarma: ' + new Date(x.fecha_alarma).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'}) + '</span>' : '';
         html += '<div class="card" style="margin-bottom: 12px; border-left: 5px solid var(--primary);">' +
           '<div style="display:flex; justify-content:space-between; align-items:flex-start;">' +
-            '<div><div style="font-weight:700; font-size:1.02rem; ' + (x.completada ? 'text-decoration: line-through; opacity: 0.6;' : '') + '">' + x.titulo + '</div>' +
-            '<div style="font-size: 0.8rem; color: var(--accent); margin-top: 4px;">📅 ' + new Date(x.fecha_evento).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'}) + txtAlarma + '</div></div>' +
+            '<div><div style="font-weight:700; font-size:1.02rem; ' + (x.completada ? 'text-decoration: line-through; opacity: 0.6;' : '') + '">' + tituloSeguro + '</div>' +
+            '<div style="font-size: 0.8rem; color: var(--accent); margin-top: 4px;">📅 ' + (x.es_todo_el_dia ? new Date(x.fecha_evento).toLocaleDateString('es-EC',{timeZone:'America/Guayaquil',year:'numeric',month:'short',day:'numeric'}) + ' · Todo el día' : new Date(x.fecha_evento).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'})) + txtAlarma + '</div></div>' +
             '<span class="badge ' + (x.completada ? 'badge-done' : 'badge-pending') + '">' + (x.completada ? 'Lista' : 'Pendiente') + '</span>' +
           '</div>' +
-          (x.detalle ? '<div style="font-size:0.82rem; color:#cbd5e1; background:var(--card-inner); padding:7px 10px; border-radius:6px; margin:8px 0;">📝 ' + x.detalle + '</div>' : '') +
+          (x.detalle ? '<div style="font-size:0.82rem; color:#cbd5e1; background:var(--card-inner); padding:7px 10px; border-radius:6px; margin:8px 0;">📝 ' + detalleSeguro + '</div>' : '') +
           (x.foto_url ? '<button class="thumb-btn" style="margin-top:6px;" onclick="abrirVisor(\'' + x.foto_url + '\')">📷 Ver Documento</button>' : '') +
           '<div style="display:flex; justify-content: flex-end; gap: 8px; margin-top: 10px;">' +
+            (x.actuacion_id ? '<span style="color:#93c5fd;font-size:0.73rem">⚖ Evento del expediente. Editar desde Clientes.</span>' :
             '<button class="btn btn-secondary" onclick="abrirModalEditarAgenda(\'' + x.id + '\')">✏️ Editar</button>' +
             '<button class="btn btn-secondary" onclick="toggleAgenda(\'' + x.id + '\', ' + x.completada + ')">' + (x.completada ? 'Reabrir' : 'Tachar') + '</button>' +
-            '<button class="btn btn-danger" onclick="borrarAgenda(\'' + x.id + '\')">✕ Anular</button>' +
+            '<button class="btn btn-danger" onclick="borrarAgenda(\'' + x.id + '\')">✕ Anular</button>'
+            ) +
           '</div></div>';
       }
       cont.innerHTML = html;
@@ -2939,6 +2945,7 @@
       if(!asuntos.some(a=>idIgual(a.id,state.asuntoId))) state.asuntoId=null;
       setMessage(`${clientes.length} clientes · ${asuntos.length} asuntos · ${actuaciones.length} actuaciones`,'ok');
       actualizarClientesCobro();dibujarLista();dibujarFicha();
+      if(typeof window.actualizarPanelAlertas === 'function') window.actualizarPanelAlertas();
     } catch(e) { console.error(e);setMessage(e.message,'error'); }
     finally {state.cargando=false;}
   }
@@ -3067,9 +3074,9 @@
       <div class="esabas-titulo">Historial de actuaciones (${acts.length})</div>
       ${acts.length?acts.map(x=>{
         const docs=state.adjuntos.filter(z=>idIgual(z.actuacion_id,x.id));
-        return `<div class="esabas-tramite"><b>${fecha(x.fecha_actuacion)} · ${esc(x.tipo||'Actuación')}</b>
+        return `<div class="esabas-tramite" data-actuacion-id="${esc(x.id)}"><b>${fecha(x.fecha_actuacion)} · ${esc(x.tipo||'Actuación')}</b>
           <p class="esabas-mini" style="white-space:pre-wrap">${esc(x.descripcion||'')}</p>
-          ${x.proxima_fecha?`<div class="esabas-mini">Próxima fecha: ${fecha(x.proxima_fecha)}</div>`:''}
+          ${x.proxima_fecha?`<div class="esabas-mini">Próxima actuación o vencimiento: ${fecha(x.proxima_fecha)}</div>`:''}
           ${docs.map(z=>`<div class="esabas-tools"><button type="button" class="btn btn-secondary" data-legal="abrir-adjunto" data-id="${esc(z.id)}">📎 ${esc(z.nombre_archivo||'Adjunto')}</button></div>`).join('')}
           <div class="esabas-tools"><button type="button" class="btn btn-secondary" data-legal="adjuntar" data-id="${esc(x.id)}">Adjuntar documento</button></div>
           <div id="esabas-adjuntar-${esc(x.id)}"></div></div>`;
@@ -3077,12 +3084,13 @@
       ${cargos.length?`<div class="esabas-titulo">Obligaciones relacionadas</div>`+cargos.map(x=>`<div class="esabas-tramite">${esc(x.concepto)} · ${moneda(x.monto)} · pendiente ${moneda(x.saldo_pendiente)}</div>`).join(''):''}
       ${citas.length?`<div class="esabas-titulo">Citas de este asunto</div>`+citas.map(x=>`<div class="esabas-tramite">${fecha(x.fecha_evento)} · ${esc(x.titulo)}</div>`).join(''):''}
     </div>`;
+    if(typeof window.esabasDecorate === 'function') window.esabasDecorate();
   }
   function formActuacion() {
     el('esabas-form-actuacion').innerHTML=`<form class="esabas-form" id="esabas-actuacion-form"><h3 style="margin:0">Registrar actuación</h3>
     <div class="esabas-cols">${input('fecha_actuacion','Fecha *',hoyLocal(),'date')}${input('tipo','Tipo (escrito, audiencia, providencia...) *')}</div>
     <label>Detalle de lo realizado *<textarea name="descripcion" required></textarea></label>
-    ${input('proxima_fecha','Próxima fecha / vencimiento', '', 'date')}
+    ${input('proxima_fecha','Próxima actuación o vencimiento', '', 'date')}
     <label>Adjuntar foto o documento (opcional)<input type="file" name="archivo" accept="image/*,.pdf,.doc,.docx,.txt"></label>
     <p class="esabas-mini">Los documentos deben guardarse en un repositorio privado de Supabase Storage.</p>
     <div class="esabas-tools"><button type="submit" class="btn btn-primary">Guardar actuación</button><button type="button" class="btn btn-secondary" data-legal="cancelar-form-actuacion">Cancelar</button></div></form>`;
@@ -3103,7 +3111,9 @@
   async function subirAdjunto(actuacionId, archivo) {
     if(!archivo) return;
     validarActivo();
-    if(archivo.size>15*1024*1024) throw new Error('Archivo demasiado grande. Límite: 15 MB.');
+    const preparado=typeof window.esabasComprimirImagen === 'function' ? await window.esabasComprimirImagen(archivo) : {archivo:archivo,nombreOriginal:archivo.name,bytesOriginales:archivo.size};
+    archivo=preparado.archivo;
+    if(archivo.size>15*1024*1024) throw new Error('Archivo demasiado grande incluso después de optimizarlo. Límite: 15 MB.');
     const act=state.actuaciones.find(x=>idIgual(x.id,actuacionId));
     if(!act) throw new Error('No se encontró la actuación.');
     const safeName=(archivo.name||'documento').replace(/[^a-zA-Z0-9_.-]/g,'_').slice(-100);
@@ -3111,7 +3121,7 @@
     const upload=await db().storage.from(BUCKET).upload(ruta,archivo,{upsert:false,contentType:archivo.type||'application/octet-stream'});
     if(upload.error) throw new Error('Actuación guardada, pero no se pudo subir el documento: '+upload.error.message+'. Comprueba que exista el bucket privado '+BUCKET+'.');
     try {
-      const meta=await guardar('actuaciones_adjuntos',{actuacion_id:actuacionId,nombre_archivo:archivo.name,ruta_storage:ruta,tipo_archivo:archivo.type||'application/octet-stream'});
+      const meta=await guardar('actuaciones_adjuntos',{actuacion_id:actuacionId,nombre_archivo:preparado.nombreOriginal,ruta_storage:ruta,tipo_archivo:archivo.type||'application/octet-stream',bytes_originales:preparado.bytesOriginales,bytes_guardados:archivo.size});
       state.adjuntos.push(meta);
     } catch(e) {
       await db().storage.from(BUCKET).remove([ruta]);
@@ -3231,10 +3241,13 @@
     dibujarLista();dibujarFicha();
     if(el('view-desc'))el('view-desc').textContent='Clientes y Expedientes';
   };
+  window.esabasState=state;
+  window.esabasSubirAdjunto=subirAdjunto;
   window.esabasLimpiarDatos=limpiar;
   window.esabasCargarExpedientes=cargar;
 })();
 
 </script>
+<script src="./mejoras.js?v=20261115-1"></script>
 </body>
 </html>
