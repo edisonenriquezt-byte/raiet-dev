@@ -1,0 +1,94 @@
+
+name: Crear APK Android RAIET ESABAS
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/raiet-apk.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  compilar-apk:
+    name: Compilar APK de pruebas
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Obtener codigo RAIET
+        uses: actions/checkout@v4
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Preparar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Preparar Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Instalar Android SDK
+        run: |
+          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Preparar proyecto Android de RAIET
+        shell: bash
+        run: |
+          cat > package.json <<'EOF'
+          {
+            "name": "raiet-esabas-android",
+            "version": "1.0.0",
+            "private": true,
+            "dependencies": {
+              "@capacitor/core": "^8.0.0",
+              "@capacitor/android": "^8.0.0"
+            },
+            "devDependencies": {
+              "@capacitor/cli": "^8.0.0"
+            }
+          }
+          EOF
+
+          npm install --no-audit --no-fund
+
+          mkdir -p www
+
+          cp index.html www/
+          cp acceso-esabas.js www/
+          cp manifest.json www/
+          cp sw.js www/
+          cp icon-192.png www/
+          cp icon-512.png www/
+
+          cat > capacitor.config.json <<'EOF'
+          {
+            "appId": "com.esabas.raietdev",
+            "appName": "RAIET ESABAS",
+            "webDir": "www"
+          }
+          EOF
+
+          npx cap add android
+          npx cap sync android
+
+      - name: Compilar APK Android
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Publicar APK para instalar
+        uses: actions/upload-artifact@v4
+        with:
+          name: RAIET-ESABAS-Android-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30
