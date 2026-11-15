@@ -3,11 +3,6 @@ name: Crear APK Android RAIET ESABAS
 
 on:
   workflow_dispatch:
-  workflow_run:
-    workflows:
-      - pages build and deployment
-    types:
-      - completed
   push:
     branches:
       - main
@@ -23,7 +18,7 @@ on:
       - "icon-512.png"
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   compilar-apk:
@@ -170,19 +165,3 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      - name: Publicar APK de descarga directa
-        if: github.ref == 'refs/heads/main'
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
-          TAG: raiet-esabas-android-${{ github.run_number }}
-        run: |
-          set -e
-          gh release create "$TAG" RAIET-ESABAS.apk \
-            --repo "$REPO" \
-            --target "$GITHUB_SHA" \
-            --title "RAIET ESABAS Android · compilación ${{ github.run_number }}" \
-            --notes "APK Android instalable de RAIET ESABAS, generada desde la versión web oficial en el repositorio. Incluye clientes, asuntos jurídicos, agenda, cobros, pagos, edición auditada y compresión de fotografías. Compilación debug firmada automáticamente para instalación de prueba; no es una versión firmada para Google Play." \
-            --latest
-          echo "Enlace permanente: https://github.com/$REPO/releases/latest/download/RAIET-ESABAS.apk"
