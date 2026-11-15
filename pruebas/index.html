@@ -1752,7 +1752,7 @@
             }
           }
 
-          var nuevoAbono = { id: 'loc_a_' + Date.now(), cargo_id: cargoId, monto: monto, fecha: fecha, tipo: tipo, nota: nota, foto_url: fotoBase64, desglose_imputacion: desglose };
+          var nuevoAbono = { id: 'loc_a_' + Date.now(), cargo_id: cargoId, compromiso_id: compOrigenId || null, monto: monto, fecha: fecha, tipo: tipo, nota: nota, foto_url: fotoBase64, desglose_imputacion: desglose };
           v.cobros_abonos.push(nuevoAbono);
 
           if (compOrigenId) {
@@ -1778,7 +1778,7 @@
         if (navigator.onLine && db && !String(id).startsWith('loc_')) {
           try {
             var ins = await db.from('cobros_abonos').insert({
-              cliente_id: id, cargo_id: cargoId, monto: monto, fecha: fecha, tipo: tipo, nota: nota, foto_url: fotoBase64, desglose_imputacion: desglose
+              cliente_id: id, cargo_id: cargoId, compromiso_id: compOrigenId || null, monto: monto, fecha: fecha, tipo: tipo, nota: nota, foto_url: fotoBase64, desglose_imputacion: desglose
             }).select().single();
             if (ins.data && nuevoAbono) nuevoAbono.id = ins.data.id;
 
@@ -2105,7 +2105,11 @@
             (a.nota ? '<span style="font-size:0.7rem; color:#94a3b8;">💬 ' + a.nota + '</span>' : '') +
             (a.foto_url ? '<button class="thumb-btn" onclick="abrirVisor(\'' + a.foto_url + '\')">🧾 Ver Recibo</button>' : '') +
             '</div>' +
-            '<div class="actions"><b style="color:var(--success);">+$' + Number(a.monto).toFixed(2) + '</b><button class="btn-del-mini" title="Anular abono" onclick="borrarAbono(\'' + a.id + '\')">✕</button></div>' +
+            '<div class="actions" style="display:flex;align-items:center;justify-content:flex-end;gap:5px;flex-wrap:wrap">' +
+ '<b style="color:var(--success);">+$' + Number(a.monto).toFixed(2) + '</b>' +
+ '<button class="btn btn-secondary" style="padding:4px 7px;font-size:.7rem" type="button" data-fin-edit="cobro" data-fin-id="' + a.id + '">✏️ Editar</button>' +
+ '<button class="btn btn-secondary" style="padding:4px 7px;font-size:.7rem" type="button" data-fin-history="cobro" data-fin-id="' + a.id + '">Historial</button>' +
+ '<button class="btn-del-mini" title="Anular abono" onclick="borrarAbono(\'' + a.id + '\')">✕</button></div>' +
           '</div>';
         }
 
@@ -2373,7 +2377,7 @@
             }
           }
 
-          var nuevoAbono = { id: 'loc_pa_' + Date.now(), cargo_id: cargoId, monto: monto, fecha: fecha, tipo: tipo, nota: nota, foto_url: fotoBase64, desglose_imputacion: desglose };
+          var nuevoAbono = { id: 'loc_pa_' + Date.now(), cargo_id: cargoId, compromiso_id: compOrigenId || null, monto: monto, fecha: fecha, tipo: tipo, nota: nota, foto_url: fotoBase64, desglose_imputacion: desglose };
           p.pagos_abonos.push(nuevoAbono);
 
           if (compOrigenId) {
@@ -2398,9 +2402,13 @@
 
         if (navigator.onLine && db && !String(id).startsWith('loc_')) {
           try {
-            await db.from('pagos_abonos').insert({
-              acreedor_id: id, cargo_id: cargoId, monto: monto, fecha: fecha, tipo: tipo, nota: nota, foto_url: fotoBase64, desglose_imputacion: desglose
-            });
+            var reciboGuardado = await db.from('pagos_abonos').insert({
+              acreedor_id: id, cargo_id: cargoId, compromiso_id: compOrigenId || null, monto: monto, fecha: fecha, tipo: tipo, nota: nota, foto_url: fotoBase64, desglose_imputacion: desglose
+            }).select().single();
+            if (reciboGuardado.data && nuevoAbono) {
+              nuevoAbono.id = reciboGuardado.data.id;
+              guardarMemoriaLocal();
+            }
             if (cargoActualizado && !String(cargoActualizado.id).startsWith('loc_')) {
               await db.from('pagos_cargos').update({ saldo_pendiente: cargoActualizado.saldo_pendiente, estado: cargoActualizado.estado }).eq('id', cargoActualizado.id);
             }
@@ -2600,7 +2608,11 @@
             (a.nota ? '<span style="font-size:0.7rem; color:#94a3b8;">💬 ' + a.nota + '</span>' : '') +
             (a.foto_url ? '<button class="thumb-btn" onclick="abrirVisor(\'' + a.foto_url + '\')">🧾 Ver Recibo</button>' : '') +
             '</div>' +
-            '<div class="actions"><b style="color:var(--success);">-$' + Number(a.monto).toFixed(2) + '</b><button class="btn-del-mini" title="Anular pago" onclick="borrarAbonoPagar(\'' + a.id + '\')">✕</button></div>' +
+            '<div class="actions" style="display:flex;align-items:center;justify-content:flex-end;gap:5px;flex-wrap:wrap">' +
+ '<b style="color:var(--success);">-$' + Number(a.monto).toFixed(2) + '</b>' +
+ '<button class="btn btn-secondary" style="padding:4px 7px;font-size:.7rem" type="button" data-fin-edit="pago" data-fin-id="' + a.id + '">✏️ Editar</button>' +
+ '<button class="btn btn-secondary" style="padding:4px 7px;font-size:.7rem" type="button" data-fin-history="pago" data-fin-id="' + a.id + '">Historial</button>' +
+ '<button class="btn-del-mini" title="Anular pago" onclick="borrarAbonoPagar(\'' + a.id + '\')">✕</button></div>' +
           '</div>';
         }
 
@@ -3253,5 +3265,6 @@
 
 </script>
 <script src="./mejoras.js?v=20261115-2"></script>
+<script src="./edicion-financiera.js?v=20261115-1"></script>
 </body>
 </html>
