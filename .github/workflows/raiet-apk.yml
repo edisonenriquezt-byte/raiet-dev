@@ -15,7 +15,7 @@ permissions:
 jobs:
   compilar-apk:
     name: Compilar APK de pruebas
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Obtener codigo RAIET
@@ -32,33 +32,61 @@ jobs:
           distribution: temurin
           java-version: "21"
 
+      # GitHub Ubuntu 24.04 ya incorpora Android SDK.
+      # Evitamos el instalador que solicitaba
+      # el paquete obsoleto "tools".
+
       - name: Preparar Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Instalar Android SDK
-        run: |
-          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
-
-      - name: Preparar proyecto Android de RAIET
         shell: bash
         run: |
+          set -e
+
+          echo "Verificando Android SDK..."
+
+          echo "ANDROID_HOME=$ANDROID_HOME"
+
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+
+          if [ ! -x "$SDKMANAGER" ]; then
+            echo "ERROR: No se encontro sdkmanager."
+            exit 1
+          fi
+
+          echo "Aceptando licencias Android..."
+          yes | "$SDKMANAGER" --licenses > /dev/null || true
+
+          echo "Instalando herramientas necesarias..."
+          "$SDKMANAGER" --install \
+            "platform-tools" \
+            "platforms;android-36" \
+            "build-tools;36.0.0"
+
+          echo "Android SDK preparado."
+
+      - name: Preparar proyecto Android RAIET
+        shell: bash
+        run: |
+          set -e
+
           cat > package.json <<'EOF'
           {
             "name": "raiet-esabas-android",
             "version": "1.0.0",
             "private": true,
             "dependencies": {
-              "@capacitor/core": "^8.0.0",
-              "@capacitor/android": "^8.0.0"
+              "@capacitor/core": "8.0.0",
+              "@capacitor/android": "8.0.0"
             },
             "devDependencies": {
-              "@capacitor/cli": "^8.0.0"
+              "@capacitor/cli": "8.0.0"
             }
           }
           EOF
 
+          echo "Instalando Capacitor..."
           npm install --no-audit --no-fund
 
+          echo "Preparando archivos de RAIET..."
           mkdir -p www
 
           cp index.html www/
@@ -72,18 +100,43 @@ jobs:
           {
             "appId": "com.esabas.raietdev",
             "appName": "RAIET ESABAS",
-            "webDir": "www"
+            "webDir": "www",
+            "android": {
+              "allowMixedContent": false
+            }
           }
           EOF
 
+          echo "Creando proyecto Android..."
           npx cap add android
+
+          echo "Sincronizando archivos..."
           npx cap sync android
+
+          echo "Proyecto Android preparado."
 
       - name: Compilar APK Android
         working-directory: android
+        shell: bash
         run: |
+          set -e
+
           chmod +x gradlew
+
           ./gradlew assembleDebug --no-daemon
+
+      - name: Verificar APK
+        shell: bash
+        run: |
+          APK="android/app/build/outputs/apk/debug/app-debug.apk"
+
+          if [ ! -f "$APK" ]; then
+            echo "ERROR: No se genero la APK."
+            exit 1
+          fi
+
+          echo "APK generada correctamente:"
+          ls -lh "$APK"
 
       - name: Publicar APK para instalar
         uses: actions/upload-artifact@v4
