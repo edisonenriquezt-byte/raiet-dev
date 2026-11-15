@@ -21,6 +21,20 @@
   const ID_FINAL = "com.esabas.raiet";
   let actualizacionConsultada = false;
   let autenticacionEnCurso = false;
+  const CLAVE_ACTIVIDAD_WEB = "raiet_web_ultima_actividad";
+  const VERSION_WEB = "1.0.19";
+  function leerActividadWeb() {
+    try { return Number(sessionStorage.getItem(CLAVE_ACTIVIDAD_WEB)) || 0; }
+    catch (_) { return 0; }
+  }
+  function guardarActividadWeb() {
+    if (puente()) return;
+    try { sessionStorage.setItem(CLAVE_ACTIVIDAD_WEB, String(ultimaActividad)); }
+    catch (_) {}
+  }
+  function borrarActividadWeb() {
+    try { sessionStorage.removeItem(CLAVE_ACTIVIDAD_WEB); } catch (_) {}
+  }
 
   // El navegador web no expone la huella de Android.
   const puente = () => window.RAIET_NATIVE && window.RAIET_NATIVE.enabled ? window.RAIET_NATIVE : null;
@@ -177,6 +191,8 @@
     html.raiet-bloqueado #raiet-revisar-version,
     html.raiet-bloqueado #raiet-aviso-actualizacion { display: none !important; }
 
+    #raiet-version-web { position: fixed; top: 12px; left: 12px; z-index: 99997; pointer-events:none; color:#94a3b8; background:#101827; padding:5px 8px; border:1px solid #334155; border-radius:6px; font:11px Arial,sans-serif; }
+    html.raiet-bloqueado #raiet-version-web { display:none; }
     #raiet-cerrar-sesion {
       position: fixed;
       right: 12px;
@@ -251,6 +267,13 @@
     salir.textContent = "Cerrar sesión";
 
     document.body.appendChild(salir);
+    if (!puente()) {
+      const etiquetaVersion=document.createElement("span");
+      etiquetaVersion.id="raiet-version-web";
+      etiquetaVersion.textContent="WEB · v"+VERSION_WEB;
+      etiquetaVersion.title="Versión web de RAIET ESABAS";
+      document.body.appendChild(etiquetaVersion);
+    }
 
     const revisarBoton = document.createElement("button");
     revisarBoton.id = "raiet-revisar-version";
@@ -406,6 +429,7 @@
       }
 
       ultimaActividad = Date.now();
+      guardarActividadWeb();
       controlarInactividad();
     }
 
@@ -416,6 +440,7 @@
 
       raiz.classList.add("raiet-bloqueado");
       clearTimeout(temporizador);
+      borrarActividadWeb();
 
       document.getElementById("raiet-clave").value = "";
 
@@ -449,6 +474,7 @@
       }
 
       ultimaActividad = Date.now();
+      guardarActividadWeb();
       controlarInactividad();
       void revisarActualizaciones(false);
     }
@@ -552,14 +578,35 @@
       return;
     }
 
-    // Cada apertura exige una nueva identificación.
-    // No cierra las sesiones de otros dispositivos.
+    // La web conserva su sesión al refrescar sólo si hubo actividad reciente.
+    // Android mantiene su acceso biométrico al abrir y su bloqueo al abandonar.
+    const ultimaWeb = !puente() ? leerActividadWeb() : 0;
+    const transcurrido = Date.now() - ultimaWeb;
+    if (!puente() && ultimaWeb > 0 && transcurrido >= 0 && transcurrido < TIEMPO_BLOQUEO) {
+      try {
+        const identidad = await cliente.auth.getUser();
+        if (!identidad.error && identidad.data?.user?.id === ADMIN_UID) {
+          abrirAplicacion();
+          return;
+        }
+        if (identidad.error) {
+          mostrarMensaje("No fue posible comprobar la sesión. Revisa tu conexión y actualiza.");
+          await comprobarHuellaGuardada();
+          return;
+        }
+      } catch (error) {
+        mostrarMensaje("Sin conexión para comprobar la sesión. Revisa internet y vuelve a cargar.");
+        await comprobarHuellaGuardada();
+        return;
+      }
+    }
+
+    borrarActividadWeb();
     try {
       await cliente.auth.signOut({ scope: "local" });
     } catch (error) {
-      console.warn("No se pudo verificar el cierre anterior.");
+      console.warn("No se pudo cerrar una sesión local anterior.");
     }
-
     mostrarMensaje("");
     await comprobarHuellaGuardada();
   });

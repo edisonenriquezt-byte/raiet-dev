@@ -99,7 +99,7 @@
   }
 </style>
 <script src="./raiet-native.js"></script>
-<script src="./acceso-esabas.js"></script>
+<script src="./acceso-esabas.js?v=20261115-19"></script>
 <!-- FIN CONTROL DE ACCESO -->
 
   <style>
@@ -643,7 +643,7 @@
 
   <script>
     if ('serviceWorker' in navigator) {
-      if (location.protocol==='https:') navigator.serviceWorker.register('./sw.js?v=20261115-18',{updateViaCache:'none'}).catch(function(err) { console.log('SW error:', err); });
+      if (location.protocol==='https:') navigator.serviceWorker.register('./sw.js?v=20261115-19',{updateViaCache:'none'}).catch(function(err) { console.log('SW error:', err); });
     }
 
     var SUPABASE_URL = 'https://fwkdtcecdwxezzkphxiv.supabase.co';
@@ -2758,7 +2758,7 @@
         return `<div class="esabas-tramite" data-actuacion-id="${esc(x.id)}"><b>${fecha(x.fecha_actuacion)} · ${esc(x.tipo||'Actuación')}</b>
           <p class="esabas-mini" style="white-space:pre-wrap">${esc(x.descripcion||'')}</p>
           ${x.proxima_fecha?`<div class="esabas-mini">Próxima actuación o vencimiento: ${fecha(x.proxima_fecha)}</div>`:''}
-          ${docs.map(z=>`<div class="esabas-tools"><button type="button" class="btn btn-secondary" data-legal="abrir-adjunto" data-id="${esc(z.id)}">📎 ${esc(z.nombre_archivo||'Adjunto')}</button></div>`).join('')}
+          ${docs.map(z=>`<div class="esabas-tools"><button type="button" class="btn btn-secondary" data-legal="abrir-adjunto" data-id="${esc(z.id)}">📎 ${esc(z.nombre_archivo||'Adjunto')}</button><button type="button" class="btn btn-secondary" data-legal="eliminar-adjunto" data-id="${esc(z.id)}" title="Eliminar adjunto definitivamente">🗑 Eliminar</button></div>`).join('')}
           <div class="esabas-tools"><button type="button" class="btn btn-secondary" data-legal="adjuntar" data-id="${esc(x.id)}">Adjuntar documento</button></div>
           <div id="esabas-adjuntar-${esc(x.id)}"></div></div>`;
       }).join(''):'<p class="esabas-mini">No existen actuaciones registradas.</p>'}
@@ -2810,6 +2810,33 @@
       await db().storage.from(BUCKET).remove([ruta]);
       throw e;
     }
+  }
+  async function eliminarAdjunto(id) {
+    const adjunto=state.adjuntos.find(x=>idIgual(x.id,id));
+    if(!adjunto)throw new Error('No existe este adjunto. Actualiza los expedientes.');
+    validarActivo();
+    const auth=await db().auth.getUser();
+    if(auth.error||auth.data?.user?.id!==ADMIN_UID)throw new Error('Sesión no autorizada para eliminar documentos.');
+    const nombre=adjunto.nombre_archivo||'Adjunto';
+    if(!window.confirm('¿ELIMINAR DEFINITIVAMENTE «'+nombre+'»?\n\nSe borrará de la ficha y del almacenamiento privado de Supabase. No podrás recuperarlo desde RAIET. Conserva previamente el original si constituye una prueba jurídica.'))return false;
+    // Evita perder un fichero recuperable ante un error al borrar de Storage.
+    const eliminacion=await db().from('actuaciones_adjuntos').delete()
+      .eq('id',adjunto.id).eq('actuacion_id',adjunto.actuacion_id).select('id').single();
+    if(eliminacion.error||!eliminacion.data||eliminacion.data.id!==adjunto.id)
+      throw new Error('No se pudo eliminar la referencia. El fichero original sigue almacenado. '+(eliminacion.error?.message||''));
+    const fisico=await db().storage.from(BUCKET).remove([adjunto.ruta_storage]);
+    if(fisico.error){
+      const restaurado=await db().from('actuaciones_adjuntos').insert(adjunto).select('id').single();
+      if(restaurado.error){
+        throw new Error('El fichero sigue en Storage, pero no se pudo restaurar su referencia en la ficha. Solicita recuperación antes de intentar otra eliminación.');
+      }
+      throw new Error('No se pudo borrar de Storage. La referencia fue restaurada. '+fisico.error.message);
+    }
+    state.adjuntos=state.adjuntos.filter(x=>!idIgual(x.id,id));
+    document.getElementById('esabas-visor-adjunto')?.remove();
+    await cargar();
+    setMessage('Eliminado: '+nombre,'ok');
+    return true;
   }
   async function abrirAdjunto(id) {
     const a=state.adjuntos.find(x=>idIgual(x.id,id));
@@ -2968,6 +2995,11 @@
         case 'adjuntar':{
           const d=el('esabas-adjuntar-'+id);d.innerHTML=`<form id="esabas-adjunto-form-${esc(id)}" class="esabas-form esabas-adjunto-form" data-actuacion-id="${esc(id)}"><label>Documento<input type="file" name="archivo" required accept="image/*,.pdf,.doc,.docx,.txt"></label><button type="submit" class="btn btn-primary">Subir archivo privado</button></form>`;break;
         }
+        case 'eliminar-adjunto':{
+          b.disabled=true;
+          try { await eliminarAdjunto(id); } finally { b.disabled=false; }
+          break;
+        }
         case 'abrir-adjunto':{
           const texto=b.textContent;
           b.disabled=true;b.textContent='Abriendo documento…';
@@ -3008,8 +3040,8 @@
 })();
 
 </script>
-<script src="./mejoras.js?v=20261115-18"></script>
-<script src="./edicion-financiera.js?v=20261115-18"></script>
-<script src="./raiet-interacciones.js?v=20261115-18"></script>
+<script src="./mejoras.js?v=20261115-19"></script>
+<script src="./edicion-financiera.js?v=20261115-19"></script>
+<script src="./raiet-interacciones.js?v=20261115-19"></script>
 </body>
 </html>

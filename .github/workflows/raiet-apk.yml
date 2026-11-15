@@ -128,8 +128,8 @@ jobs:
 
           echo "Verificando componentes instalables..."
           grep -q 'RAIET ESABAS' www/index.html
-          grep -q 'mejoras.js?v=20261115-18' www/index.html
-          grep -q 'edicion-financiera.js?v=20261115-18' www/index.html
+          grep -q 'mejoras.js?v=20261115-19' www/index.html
+          grep -q 'edicion-financiera.js?v=20261115-19' www/index.html
           node --check www/raiet-interacciones.js
           node --check www/mejoras.js
           node --check www/edicion-financiera.js
