@@ -81,14 +81,14 @@
 </script>  
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Raiet Suite DEV</title>
+  <title>RAIET ESABAS | Gestión Integral</title>
   
-  <link rel="manifest" href="manifest.json">
+  <link rel="manifest" href="./manifest.json">
   <meta name="theme-color" content="#080a10">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Raiet Suite DEV">
+  <meta name="apple-mobile-web-app-title" content="RAIET ESABAS">
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
@@ -98,7 +98,339 @@
     visibility: hidden !important;
   }
 </style>
-<script src="./acceso-esabas.js"></script>
+<script>
+
+/*
+  RAIET ESABAS
+  Acceso privado de administrador
+  Primera versión: contraseña y bloqueo automático
+*/
+
+(function () {
+  "use strict";
+
+  const ADMIN_UID = "4c2b8c98-200f-4307-8d7c-6d8742feb17a";
+  const MINUTOS_INACTIVIDAD = 10;
+  const TIEMPO_BLOQUEO = MINUTOS_INACTIVIDAD * 60 * 1000;
+
+  let temporizador = null;
+  let inicioRealizado = false;
+  let ultimaActividad = Date.now();
+  let bloqueoEnCurso = false;
+
+  const raiz = document.documentElement;
+  raiz.classList.add("raiet-bloqueado");
+
+  const estilos = document.createElement("style");
+
+  estilos.textContent = `
+    html.raiet-bloqueado body > :not(#raiet-acceso) {
+      visibility: hidden !important;
+    }
+
+    #raiet-acceso {
+      position: fixed;
+      inset: 0;
+      z-index: 999999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: #080a10;
+      color: #f8fafc;
+      font-family: Arial, sans-serif;
+    }
+
+    html:not(.raiet-bloqueado) #raiet-acceso {
+      display: none;
+    }
+
+    #raiet-acceso .acceso-tarjeta {
+      width: 100%;
+      max-width: 390px;
+      padding: 28px;
+      border-radius: 18px;
+      background: #111520;
+      border: 1px solid #263247;
+      box-sizing: border-box;
+    }
+
+    #raiet-acceso h1 {
+      color: #ffffff;
+      font-size: 25px;
+      margin: 0 0 8px;
+    }
+
+    #raiet-acceso p {
+      color: #a7b3c5;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    #raiet-acceso label {
+      display: block;
+      margin: 16px 0 6px;
+      font-size: 13px;
+      font-weight: bold;
+    }
+
+    #raiet-acceso input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 13px;
+      border-radius: 9px;
+      border: 1px solid #37465d;
+      background: #080a10;
+      color: white;
+      font-size: 16px;
+    }
+
+    #raiet-acceso button {
+      display: block;
+      width: 100%;
+      margin-top: 20px;
+      padding: 14px;
+      border: 0;
+      border-radius: 9px;
+      color: white;
+      background: #2563eb;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    #raiet-acceso button:disabled {
+      opacity: 0.6;
+    }
+
+    #raiet-acceso .mensaje {
+      min-height: 20px;
+      margin-top: 14px;
+      color: #fca5a5;
+      font-size: 13px;
+    }
+
+    #raiet-cerrar-sesion {
+      position: fixed;
+      right: 12px;
+      top: 12px;
+      z-index: 99999;
+      padding: 8px 12px;
+      background: #991b1b;
+      color: white;
+      border: 0;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    html.raiet-bloqueado #raiet-cerrar-sesion {
+      display: none;
+    }
+  `;
+
+  document.head.appendChild(estilos);
+
+  document.addEventListener("DOMContentLoaded", async function () {
+    const cliente = window.db;
+
+    const acceso = document.createElement("div");
+    acceso.id = "raiet-acceso";
+
+    acceso.innerHTML = `
+      <div class="acceso-tarjeta">
+        <h1>RAIET ESABAS</h1>
+        <p>Sistema privado de gestión profesional</p>
+
+        <form id="raiet-formulario-acceso">
+          <label for="raiet-email">Correo electrónico</label>
+          <input
+            type="email"
+            id="raiet-email"
+            autocomplete="username"
+            required
+          >
+
+          <label for="raiet-clave">Contraseña</label>
+          <input
+            type="password"
+            id="raiet-clave"
+            autocomplete="current-password"
+            required
+          >
+
+          <button type="submit" id="raiet-entrar">
+            Iniciar sesión
+          </button>
+        </form>
+
+        <p class="mensaje" id="raiet-mensaje" role="status"></p>
+      </div>
+    `;
+
+    document.body.appendChild(acceso);
+
+    const salir = document.createElement("button");
+    salir.id = "raiet-cerrar-sesion";
+    salir.type = "button";
+    salir.textContent = "Cerrar sesión";
+
+    document.body.appendChild(salir);
+
+    const formulario = document.getElementById(
+      "raiet-formulario-acceso"
+    );
+
+    const mensaje = document.getElementById("raiet-mensaje");
+    const botonEntrar = document.getElementById("raiet-entrar");
+
+    function mostrarMensaje(texto) {
+      mensaje.textContent = texto;
+    }
+
+    function controlarInactividad() {
+      clearTimeout(temporizador);
+
+      temporizador = setTimeout(function () {
+        if (Date.now() - ultimaActividad >= TIEMPO_BLOQUEO) {
+          bloquearAplicacion();
+        }
+      }, TIEMPO_BLOQUEO);
+    }
+
+    function registrarActividad() {
+      if (raiz.classList.contains("raiet-bloqueado")) {
+        return;
+      }
+
+      ultimaActividad = Date.now();
+      controlarInactividad();
+    }
+
+    async function bloquearAplicacion() {
+      if (bloqueoEnCurso) return;
+
+      bloqueoEnCurso = true;
+
+      raiz.classList.add("raiet-bloqueado");
+      clearTimeout(temporizador);
+      if (typeof window.esabasLimpiarDatos === 'function') window.esabasLimpiarDatos();
+
+      document.getElementById("raiet-clave").value = "";
+
+      if (cliente) {
+        try {
+          await cliente.auth.signOut({ scope: "local" });
+        } catch (error) {
+          console.error("Error al cerrar sesión:", error);
+        }
+      }
+
+      mostrarMensaje("Introduce tus credenciales para continuar.");
+      bloqueoEnCurso = false;
+    }
+
+    function abrirAplicacion() {
+      raiz.classList.remove("raiet-bloqueado");
+
+      mostrarMensaje("");
+      document.getElementById("raiet-clave").value = "";
+
+      if (!inicioRealizado) {
+        inicioRealizado = true;
+
+        if (typeof window.raietArrancar === "function") {
+          window.raietArrancar();
+        }
+      } else if (typeof window.raietArrancar === "function") {
+        window.raietArrancar();
+      }
+
+      ultimaActividad = Date.now();
+      controlarInactividad();
+    }
+
+    formulario.addEventListener("submit", async function (evento) {
+      evento.preventDefault();
+
+      if (!cliente) {
+        mostrarMensaje("No se pudo conectar con Supabase.");
+        return;
+      }
+
+      const email = document.getElementById("raiet-email")
+        .value.trim();
+
+      const password = document.getElementById("raiet-clave").value;
+
+      botonEntrar.disabled = true;
+      mostrarMensaje("Verificando acceso...");
+
+      try {
+        const resultado = await cliente.auth.signInWithPassword({
+          email: email,
+          password: password
+        });
+
+        if (resultado.error) {
+          mostrarMensaje("Correo o contraseña incorrectos.");
+          return;
+        }
+
+        if (
+          !resultado.data.user ||
+          resultado.data.user.id !== ADMIN_UID
+        ) {
+          await cliente.auth.signOut({ scope: "local" });
+          mostrarMensaje("Usuario no autorizado.");
+          return;
+        }
+
+        abrirAplicacion();
+
+      } catch (error) {
+        mostrarMensaje("No se pudo iniciar sesión. Revisa la conexión.");
+      } finally {
+        botonEntrar.disabled = false;
+      }
+    });
+
+    salir.addEventListener("click", bloquearAplicacion);
+
+    ["click", "keydown", "touchstart", "pointerdown"].forEach(
+      function (evento) {
+        document.addEventListener(evento, registrarActividad, {
+          passive: true
+        });
+      }
+    );
+
+    document.addEventListener("visibilitychange", function () {
+      if (!document.hidden && !raiz.classList.contains("raiet-bloqueado")) {
+        if (Date.now() - ultimaActividad >= TIEMPO_BLOQUEO) {
+          bloquearAplicacion();
+        }
+      }
+    });
+
+    if (!cliente) {
+      mostrarMensaje("No se encontró la conexión con Supabase.");
+      return;
+    }
+
+    // Cada apertura exige una nueva identificación.
+    // No cierra las sesiones de otros dispositivos.
+    try {
+      await cliente.auth.signOut({ scope: "local" });
+    } catch (error) {
+      console.warn("No se pudo verificar el cierre anterior.");
+    }
+
+    mostrarMensaje("");
+  });
+})();
+
+</script>
 <!-- FIN CONTROL DE ACCESO -->
 
   <style>
@@ -287,9 +619,9 @@
   <div class="container">
     <header class="brand-header">
       <div class="brand-left">
-        <div class="brand-avatar">DEV</div>
+        <div class="brand-avatar">RE</div>
         <div class="brand-title-box">
-          <span class="brand-name">RAIET SUITE DEV</span>
+          <span class="brand-name">RAIET ESABAS</span>
           <span class="brand-tag" id="view-desc">Agenda y Citas</span>
         </div>
       </div>
@@ -301,7 +633,7 @@
 
     <div id="panel-alertas" class="alerts-card">
       <div class="alerts-header">
-        <span class="alerts-title">🔔 Vencimientos y Citas (Próximas 72h)</span>
+        <span class="alerts-title">🔔 Vencimientos jurídicos y citas (7 días)</span>
         <span id="contador-alertas" class="alerts-badge">0</span>
       </div>
       <div id="lista-alertas" class="alerts-list"></div>
@@ -328,6 +660,8 @@
     <section id="tab-cobros" class="tab-content">
       <div class="card">
         <div style="display:grid; grid-template-columns: 1.3fr 1fr; gap: 8px;">
+          <div class="form-group"><label>Cliente registrado (opcional)</label><select id="cobro-cliente-existente" onchange="esabasSeleccionarClienteCobro()"><option value="">-- Crear cliente nuevo --</option></select></div>
+          <div class="form-group"><label>Asunto jurídico (opcional)</label><select id="cobro-asunto-existente"><option value="">-- Sin asunto asociado --</option></select></div>
           <div class="form-group"><label>Cliente</label><input type="text" id="cobro-cliente" placeholder="Nombre completo"></div>
           <div class="form-group"><label>Teléfono</label><input type="tel" id="cobro-telefono" placeholder="0991234567"></div>
         </div>
@@ -640,7 +974,7 @@
 
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./sw.js').catch(function(err) { console.log('SW error:', err); });
+      if (location.protocol==='https:') navigator.serviceWorker.register('./sw.js').catch(function(err) { console.log('SW error:', err); });
     }
 
     var SUPABASE_URL = 'https://fwkdtcecdwxezzkphxiv.supabase.co';
@@ -940,6 +1274,7 @@
       var limite72h = new Date(hoy.getTime() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
       cacheAgenda.forEach(function(c) {
+        if(c.actuacion_id) return; // Evita avisos jurídicos duplicados
         if (!c.completada && (c.fecha_evento || c.fecha_alarma)) {
           var ref = c.fecha_alarma || c.fecha_evento;
           var fechaCita = ref.substring(0, 10);
@@ -960,6 +1295,7 @@
         }
       });
 
+      if(typeof window.esabasAlertasPlazos === 'function') alertas.push(...window.esabasAlertasPlazos());
       var panel = document.getElementById('panel-alertas');
       var lista = document.getElementById('lista-alertas');
       var contador = document.getElementById('contador-alertas');
@@ -1093,19 +1429,23 @@
       var html = '';
       for (var i = 0; i < lista.length; i++) {
         var x = lista[i];
-        var txtAlarma = x.fecha_alarma ? ' • <span style="color:#fbbf24;">🔔 Alarma: ' + new Date(x.fecha_alarma).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'}) + '</span>' : '';
+        var seguro = function(v) {return String(v||'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});};
+        var tituloSeguro=seguro(x.titulo),detalleSeguro=seguro(x.detalle);
+        var txtAlarma = x.fecha_alarma ? ' • <span style="color:#fbbf24;">🔔 Alarma: ' + new Date(x.fecha_alarma).toLocaleString('es-EC', {timeZone:'America/Guayaquil',month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'}) + '</span>' : '';
         html += '<div class="card" style="margin-bottom: 12px; border-left: 5px solid var(--primary);">' +
           '<div style="display:flex; justify-content:space-between; align-items:flex-start;">' +
-            '<div><div style="font-weight:700; font-size:1.02rem; ' + (x.completada ? 'text-decoration: line-through; opacity: 0.6;' : '') + '">' + x.titulo + '</div>' +
-            '<div style="font-size: 0.8rem; color: var(--accent); margin-top: 4px;">📅 ' + new Date(x.fecha_evento).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'}) + txtAlarma + '</div></div>' +
+            '<div><div style="font-weight:700; font-size:1.02rem; ' + (x.completada ? 'text-decoration: line-through; opacity: 0.6;' : '') + '">' + tituloSeguro + '</div>' +
+            '<div style="font-size: 0.8rem; color: var(--accent); margin-top: 4px;">📅 ' + (x.es_todo_el_dia ? new Date(x.fecha_evento).toLocaleDateString('es-EC',{timeZone:'America/Guayaquil',year:'numeric',month:'short',day:'numeric'}) + ' · Todo el día' : new Date(x.fecha_evento).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'})) + txtAlarma + '</div></div>' +
             '<span class="badge ' + (x.completada ? 'badge-done' : 'badge-pending') + '">' + (x.completada ? 'Lista' : 'Pendiente') + '</span>' +
           '</div>' +
-          (x.detalle ? '<div style="font-size:0.82rem; color:#cbd5e1; background:var(--card-inner); padding:7px 10px; border-radius:6px; margin:8px 0;">📝 ' + x.detalle + '</div>' : '') +
+          (x.detalle ? '<div style="font-size:0.82rem; color:#cbd5e1; background:var(--card-inner); padding:7px 10px; border-radius:6px; margin:8px 0;">📝 ' + detalleSeguro + '</div>' : '') +
           (x.foto_url ? '<button class="thumb-btn" style="margin-top:6px;" onclick="abrirVisor(\'' + x.foto_url + '\')">📷 Ver Documento</button>' : '') +
           '<div style="display:flex; justify-content: flex-end; gap: 8px; margin-top: 10px;">' +
+            (x.actuacion_id ? '<span style="color:#93c5fd;font-size:0.73rem">⚖ Evento del expediente. Editar desde Clientes.</span>' :
             '<button class="btn btn-secondary" onclick="abrirModalEditarAgenda(\'' + x.id + '\')">✏️ Editar</button>' +
             '<button class="btn btn-secondary" onclick="toggleAgenda(\'' + x.id + '\', ' + x.completada + ')">' + (x.completada ? 'Reabrir' : 'Tachar') + '</button>' +
-            '<button class="btn btn-danger" onclick="borrarAgenda(\'' + x.id + '\')">✕ Anular</button>' +
+            '<button class="btn btn-danger" onclick="borrarAgenda(\'' + x.id + '\')">✕ Anular</button>'
+            ) +
           '</div></div>';
       }
       cont.innerHTML = html;
@@ -1128,6 +1468,19 @@
 
     async function guardarVenta() {
       var nombre = document.getElementById('cobro-cliente').value.trim();
+      var cliExistente = document.getElementById('cobro-cliente-existente').value;
+      var asuntoExistente = document.getElementById('cobro-asunto-existente').value;
+      var fichaExistente = null;
+      if (cliExistente) {
+        fichaExistente = cacheCobros.find(function(c) {return String(c.id) === String(cliExistente);});
+        if (!fichaExistente) return alert('No se encontró el cliente. Actualiza la ficha antes de registrar.');
+        nombre = fichaExistente.nombre;
+      } else if (cacheCobros.some(function(c) {return (c.nombre||'').trim().toLowerCase() === nombre.toLowerCase();})) {
+        return alert('Ya existe una ficha con ese nombre. Selecciona el cliente registrado para no duplicarlo.');
+      }
+      if (asuntoExistente && (!cliExistente || !window.esabasAsuntoPertenece || !window.esabasAsuntoPertenece(cliExistente,asuntoExistente))) {
+        return alert('El asunto seleccionado no corresponde al cliente. Selecciona nuevamente.');
+      }
       var tel = document.getElementById('cobro-telefono').value.trim();
       var numFact = document.getElementById('cobro-num').value.trim();
       var fEmision = document.getElementById('cobro-emision').value || hoyStr;
@@ -1142,12 +1495,12 @@
       var cuotasPactadas = obtenerCuotasDeContenedor('contenedor-cuotas-cobro');
 
       procesarArchivoImagen(document.getElementById('cobro-foto'), async function(fotoBase64) {
-        var idCli = 'loc_' + Date.now();
+        var idCli = cliExistente || 'loc_' + Date.now();
         var idCargo = 'loc_c_' + Date.now();
         var saldoCargo = Math.max(0, total - abonoIni);
 
         var nuevoCargo = {
-          id: idCargo, cliente_id: idCli, numero_comprobante: numFact, fecha_emision: fEmision,
+          id: idCargo, cliente_id: idCli, asunto_id: asuntoExistente || null, numero_comprobante: numFact, fecha_emision: fEmision,
           concepto: concepto, cantidad: cant, precio_unitario: punit, monto: total,
           saldo_pendiente: saldoCargo, estado: saldoCargo <= 0.001 ? 'saldado' : 'pendiente',
           fecha: fechaVenc, foto_url: fotoBase64
@@ -1176,7 +1529,14 @@
           });
         });
 
-        cacheCobros.unshift(nuevoCli);
+        if (cliExistente) {
+          if (!fichaExistente.cobros_cargos) fichaExistente.cobros_cargos=[];
+          if (!fichaExistente.cobros_abonos) fichaExistente.cobros_abonos=[];
+          fichaExistente.cobros_cargos.push(nuevoCargo);
+          fichaExistente.cobros_abonos.push(...nuevoCli.cobros_abonos);
+        } else {
+          cacheCobros.unshift(nuevoCli);
+        }
         cobrosAbiertos.push(String(idCli));
         guardarMemoriaLocal();
         dibujarCobros();
@@ -1194,12 +1554,12 @@
 
         if (navigator.onLine && db) {
           try {
-            var c = await db.from('clientes').insert({ nombre: nombre, telefono: tel }).select().single();
+            var c = cliExistente ? { data: { id: cliExistente } } : await db.from('clientes').insert({ nombre: nombre, telefono: tel }).select().single();
             if (c.data) {
               nuevoCli.id = c.data.id;
               nuevoCargo.cliente_id = c.data.id;
               var cg = await db.from('cobros_cargos').insert({
-                cliente_id: c.data.id, numero_comprobante: numFact, fecha_emision: fEmision,
+                cliente_id: c.data.id, asunto_id: asuntoExistente || null, numero_comprobante: numFact, fecha_emision: fEmision,
                 concepto: concepto, cantidad: cant, precio_unitario: punit, monto: total,
                 saldo_pendiente: saldoCargo, estado: saldoCargo <= 0.001 ? 'saldado' : 'pendiente',
                 fecha: fechaVenc, foto_url: fotoBase64
@@ -1209,7 +1569,7 @@
                 nuevoCargo.id = cg.data.id;
                 if (abonoIni > 0) {
                   await db.from('cobros_abonos').insert({
-                    cliente_id: c.data.id, cargo_id: cg.data.id, monto: abonoIni, fecha: fEmision,
+                    cliente_id: c.data.id, asunto_id: asuntoExistente || null, cargo_id: cg.data.id, monto: abonoIni, fecha: fEmision,
                     tipo: 'Anticipo Inicial', nota: 'Abono en emisión',
                     desglose_imputacion: { primario: { cargo_id: cg.data.id, monto: abonoIni, liquidada: saldoCargo <= 0.001 } }
                   });
@@ -1217,7 +1577,7 @@
 
                 for (var k = 0; k < cuotasPactadas.length; k++) {
                   await db.from('compromisos_pago').insert({
-                    id: 'cp_' + Date.now() + '_' + k, tipo: 'cobro', cliente_id: c.data.id, cargo_id: cg.data.id,
+                    id: 'cp_' + Date.now() + '_' + k, tipo: 'cobro', cliente_id: c.data.id, asunto_id: asuntoExistente || null, cargo_id: cg.data.id,
                     monto_pactado: cuotasPactadas[k].monto, fecha_pactada: cuotasPactadas[k].fecha,
                     estado: saldoCargo <= 0.001 ? 'cumplido' : 'pendiente'
                   });
@@ -1389,7 +1749,7 @@
             }
           }
 
-          var nuevoAbono = { id: 'loc_a_' + Date.now(), cargo_id: cargoId, monto: monto, fecha: fecha, tipo: tipo, nota: nota, foto_url: fotoBase64, desglose_imputacion: desglose };
+          var nuevoAbono = { id: 'loc_a_' + Date.now(), cargo_id: cargoId, compromiso_id: compOrigenId || null, monto: monto, fecha: fecha, tipo: tipo, nota: nota, foto_url: fotoBase64, desglose_imputacion: desglose };
           v.cobros_abonos.push(nuevoAbono);
 
           if (compOrigenId) {
@@ -1415,7 +1775,7 @@
         if (navigator.onLine && db && !String(id).startsWith('loc_')) {
           try {
             var ins = await db.from('cobros_abonos').insert({
-              cliente_id: id, cargo_id: cargoId, monto: monto, fecha: fecha, tipo: tipo, nota: nota, foto_url: fotoBase64, desglose_imputacion: desglose
+              cliente_id: id, cargo_id: cargoId, compromiso_id: compOrigenId || null, monto: monto, fecha: fecha, tipo: tipo, nota: nota, foto_url: fotoBase64, desglose_imputacion: desglose
             }).select().single();
             if (ins.data && nuevoAbono) nuevoAbono.id = ins.data.id;
 
@@ -1742,7 +2102,11 @@
             (a.nota ? '<span style="font-size:0.7rem; color:#94a3b8;">💬 ' + a.nota + '</span>' : '') +
             (a.foto_url ? '<button class="thumb-btn" onclick="abrirVisor(\'' + a.foto_url + '\')">🧾 Ver Recibo</button>' : '') +
             '</div>' +
-            '<div class="actions"><b style="color:var(--success);">+$' + Number(a.monto).toFixed(2) + '</b><button class="btn-del-mini" title="Anular abono" onclick="borrarAbono(\'' + a.id + '\')">✕</button></div>' +
+            '<div class="actions" style="display:flex;align-items:center;justify-content:flex-end;gap:5px;flex-wrap:wrap">' +
+ '<b style="color:var(--success);">+$' + Number(a.monto).toFixed(2) + '</b>' +
+ '<button class="btn btn-secondary" style="padding:4px 7px;font-size:.7rem" type="button" data-fin-edit="cobro" data-fin-id="' + a.id + '">✏️ Editar</button>' +
+ '<button class="btn btn-secondary" style="padding:4px 7px;font-size:.7rem" type="button" data-fin-history="cobro" data-fin-id="' + a.id + '">Historial</button>' +
+ '<button class="btn-del-mini" title="Anular abono" onclick="borrarAbono(\'' + a.id + '\')">✕</button></div>' +
           '</div>';
         }
 
@@ -2010,7 +2374,7 @@
             }
           }
 
-          var nuevoAbono = { id: 'loc_pa_' + Date.now(), cargo_id: cargoId, monto: monto, fecha: fecha, tipo: tipo, nota: nota, foto_url: fotoBase64, desglose_imputacion: desglose };
+          var nuevoAbono = { id: 'loc_pa_' + Date.now(), cargo_id: cargoId, compromiso_id: compOrigenId || null, monto: monto, fecha: fecha, tipo: tipo, nota: nota, foto_url: fotoBase64, desglose_imputacion: desglose };
           p.pagos_abonos.push(nuevoAbono);
 
           if (compOrigenId) {
@@ -2035,9 +2399,13 @@
 
         if (navigator.onLine && db && !String(id).startsWith('loc_')) {
           try {
-            await db.from('pagos_abonos').insert({
-              acreedor_id: id, cargo_id: cargoId, monto: monto, fecha: fecha, tipo: tipo, nota: nota, foto_url: fotoBase64, desglose_imputacion: desglose
-            });
+            var reciboGuardado = await db.from('pagos_abonos').insert({
+              acreedor_id: id, cargo_id: cargoId, compromiso_id: compOrigenId || null, monto: monto, fecha: fecha, tipo: tipo, nota: nota, foto_url: fotoBase64, desglose_imputacion: desglose
+            }).select().single();
+            if (reciboGuardado.data && nuevoAbono) {
+              nuevoAbono.id = reciboGuardado.data.id;
+              guardarMemoriaLocal();
+            }
             if (cargoActualizado && !String(cargoActualizado.id).startsWith('loc_')) {
               await db.from('pagos_cargos').update({ saldo_pendiente: cargoActualizado.saldo_pendiente, estado: cargoActualizado.estado }).eq('id', cargoActualizado.id);
             }
@@ -2237,7 +2605,11 @@
             (a.nota ? '<span style="font-size:0.7rem; color:#94a3b8;">💬 ' + a.nota + '</span>' : '') +
             (a.foto_url ? '<button class="thumb-btn" onclick="abrirVisor(\'' + a.foto_url + '\')">🧾 Ver Recibo</button>' : '') +
             '</div>' +
-            '<div class="actions"><b style="color:var(--success);">-$' + Number(a.monto).toFixed(2) + '</b><button class="btn-del-mini" title="Anular pago" onclick="borrarAbonoPagar(\'' + a.id + '\')">✕</button></div>' +
+            '<div class="actions" style="display:flex;align-items:center;justify-content:flex-end;gap:5px;flex-wrap:wrap">' +
+ '<b style="color:var(--success);">-$' + Number(a.monto).toFixed(2) + '</b>' +
+ '<button class="btn btn-secondary" style="padding:4px 7px;font-size:.7rem" type="button" data-fin-edit="pago" data-fin-id="' + a.id + '">✏️ Editar</button>' +
+ '<button class="btn btn-secondary" style="padding:4px 7px;font-size:.7rem" type="button" data-fin-history="pago" data-fin-id="' + a.id + '">Historial</button>' +
+ '<button class="btn-del-mini" title="Anular pago" onclick="borrarAbonoPagar(\'' + a.id + '\')">✕</button></div>' +
           '</div>';
         }
 
@@ -2474,5 +2846,422 @@
     }
     window.raietArrancar = cargarTodo;
   </script>
+  <script>
+/* RAIET ESABAS — Módulo de clientes, asuntos y actuaciones
+ * No contiene contraseñas. Se conecta a Supabase mediante window.db
+ * e inicia únicamente tras el inicio de sesión de RAIET.
+ */
+(function () {
+  'use strict';
+  const ADMIN_UID = '4c2b8c98-200f-4307-8d7c-6d8742feb17a';
+  const BUCKET = 'esabas-actuaciones';
+  const state = { clientes: [], asuntos: [], actuaciones: [], adjuntos: [], cargos: [], abonos: [], agenda: [], cuotas: [], clienteId: null, asuntoId: null, listo: false, cargando: false, editandoAsunto: false };
+  const el = id => document.getElementById(id);
+  const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const moneda = n => '$' + Number(n || 0).toFixed(2);
+  const fecha = d => { if(!d)return '—'; const x=String(d); if(x.includes('T')){const z=new Date(x);return Number.isNaN(z.getTime())?x.slice(0,10):z.toLocaleDateString('es-EC',{year:'numeric',month:'2-digit',day:'2-digit'});}return x.slice(0,10); };
+  const hoyLocal = () => {const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
+  const soloDatos = v => !v ? '' : esc(v);
+  const idIgual = (a,b) => String(a) === String(b);
+  const online = () => navigator.onLine;
+  const db = () => window.db;
+  const uuid = () => (window.crypto && window.crypto.randomUUID) ? crypto.randomUUID() : Date.now()+'-'+Math.random().toString(36).slice(2);
+  const setMessage = (s, tipo) => { const e=el('esabas-mensaje'); if(e){e.textContent=s || '';e.style.color=tipo==='error'?'#fca5a5':tipo==='ok'?'#86efac':'#cbd5e1';} };
+
+  function htmlBase() {
+    if (el('tab-clientes')) return;
+    const tabs = el('tab-agenda');
+    const nav = document.querySelector('.bottom-nav');
+    if (!tabs || !nav) return;
+    const s = document.createElement('style');
+    s.textContent = `
+      .bottom-nav {overflow-x:auto;justify-content:flex-start;scrollbar-width:thin;gap:2px}
+      .bottom-nav .nav-btn {flex:1 0 65px;min-width:65px}
+      .esabas-linea {padding:11px 13px;background:#111827;border:1px solid #263247;border-radius:11px;margin:8px 0;word-break:break-word}
+      .esabas-linea.seleccionada {border-color:#38bdf8}
+      .esabas-cols {display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:9px}
+      .esabas-form {padding:13px;background:#111520;border:1px solid #263247;border-radius:10px;margin:10px 0}
+      .esabas-form label {display:block;color:#b8c4d5;font-size:12px;margin:9px 0 4px}
+      .esabas-form input,.esabas-form textarea,.esabas-form select {display:block;width:100%;box-sizing:border-box;background:#080a10;color:#f8fafc;border:1px solid #3b475c;border-radius:7px;padding:10px;font-size:14px}
+      .esabas-form textarea {min-height:72px;resize:vertical}
+      .esabas-form .btn {margin-top:9px}
+      .esabas-mini {font-size:12px;color:#a7b3c5;line-height:1.5}
+      .esabas-tools {display:flex;gap:7px;flex-wrap:wrap;margin:8px 0}
+      .esabas-tools button {font-size:12px;padding:7px 10px}
+      .esabas-titulo {font-weight:800;color:#fff;margin:15px 0 7px;font-size:17px}
+      .esabas-separador {border:0;border-top:1px solid #2d3748;margin:17px 0}
+      .esabas-tramite {padding:11px;background:#0b1020;border-left:3px solid #38bdf8;border-radius:7px;margin:8px 0}
+      .esabas-advertencia {font-size:12px;border:1px solid #b45309;border-radius:8px;padding:9px;color:#fde68a;margin:7px 0}
+      #esabas-mensaje {min-height:20px;margin:6px 0 10px;font-size:13px;white-space:pre-line}
+      .esabas-buscar {width:100%;box-sizing:border-box;background:#0b1020;color:#fff;padding:11px;border:1px solid #374151;border-radius:9px}
+    `;
+    document.head.appendChild(s);
+    const section = document.createElement('section');
+    section.id = 'tab-clientes';
+    section.className = 'tab-content';
+    section.innerHTML = `
+      <div class="card"><h2 style="margin:0 0 8px;font-size:19px;">Clientes y asuntos jurídicos</h2>
+        <p class="esabas-mini">Una ficha por cliente, con múltiples trámites, actuaciones y movimientos económicos vinculados.</p>
+        <div id="esabas-mensaje" role="status"></div>
+        <div class="esabas-tools"><button type="button" class="btn btn-secondary" data-legal="recargar">↻ Actualizar</button>
+        <button type="button" class="btn btn-primary" data-legal="nuevo-cliente">+ Cliente</button></div>
+        <input class="esabas-buscar" id="esabas-buscar" type="search" placeholder="Buscar por nombre, teléfono, correo o proceso">
+        <div id="esabas-form-cliente" hidden></div>
+      </div>
+      <div id="esabas-lista-clientes"></div>
+      <div id="esabas-ficha-cliente"></div>`;
+    tabs.parentNode.insertBefore(section,tabs);
+    const button=document.createElement('button');
+    button.type='button';button.className='nav-btn';button.dataset.legal='navegar';
+    button.textContent='⚖ Clientes';
+    nav.insertBefore(button,nav.firstChild);
+    section.addEventListener('submit', manejarSubmit);
+    section.addEventListener('click', manejarClick);
+    el('esabas-buscar').addEventListener('input',dibujarLista);
+  }
+
+  function validarActivo() {
+    if (!online()) throw new Error('Para guardar expedientes se necesita conexión a internet. No se registró el cambio.');
+    if (!db()) throw new Error('No existe una conexión activa con Supabase.');
+  }
+  async function consulta(t, campos='*') {
+    const r = await db().from(t).select(campos).limit(1000);
+    if(r.error) throw new Error(`No se pudo leer ${t}: ${r.error.message}`);
+    return r.data || [];
+  }
+  async function guardar(t, payload, id) {
+    validarActivo();
+    const req=id?db().from(t).update(payload).eq('id',id):db().from(t).insert(payload);
+    const r=await req.select().single();
+    if(r.error) { const falta = /Could not find the ['\"]?([^'\"]+)['\"]? column.*schema cache/i.exec(r.error.message||''); throw new Error(falta ? `Falta la columna ${falta[1]} en Supabase (${t}). El registro NO se guardó. Debemos actualizar la tabla antes de continuar.` : `No se guardó en ${t}: ${r.error.message}`); }
+    if (!r.data || !r.data.id) throw new Error(`El servidor no confirmó el guardado en ${t}. No se puede dar por registrado.`);
+    return r.data;
+  }
+  async function cargar() {
+    if (state.cargando || document.documentElement.classList.contains('raiet-bloqueado')) return;
+    state.cargando=true;setMessage('Consultando clientes, asuntos y movimientos…');
+    try {
+      validarActivo();
+      const auth=await db().auth.getUser();
+      if(auth.error || !auth.data?.user || auth.data.user.id!==ADMIN_UID) throw new Error('La sesión no corresponde al administrador autorizado.');
+      const [clientes,asuntos,actuaciones,adjuntos,cargos,abonos,agenda,cuotas]=await Promise.all([
+        consulta('clientes'), consulta('asuntos'), consulta('actuaciones'),consulta('actuaciones_adjuntos'),
+        consulta('cobros_cargos'),consulta('cobros_abonos'),consulta('agenda'),consulta('compromisos_pago')
+      ]);
+      Object.assign(state,{clientes,asuntos,actuaciones,adjuntos,cargos,abonos,agenda,cuotas,listo:true});
+      // Un cliente seleccionado puede haber sido eliminado desde otra sesión.
+      if(!clientes.some(c=>idIgual(c.id,state.clienteId))) state.clienteId=null;
+      if(!asuntos.some(a=>idIgual(a.id,state.asuntoId))) state.asuntoId=null;
+      setMessage(`${clientes.length} clientes · ${asuntos.length} asuntos · ${actuaciones.length} actuaciones`,'ok');
+      actualizarClientesCobro();dibujarLista();dibujarFicha();
+      if(typeof window.actualizarPanelAlertas === 'function') window.actualizarPanelAlertas();
+    } catch(e) { console.error(e);setMessage(e.message,'error'); }
+    finally {state.cargando=false;}
+  }
+  // Mismo cliente para cualquier obligación. La venta inicial permite
+  // reutilizar la ficha en vez de crear registros duplicados.
+  function actualizarClientesCobro() {
+    const sel=el('cobro-cliente-existente');if(!sel)return;
+    const elegido=sel.value;
+    sel.innerHTML='<option value="">-- Nuevo cliente --</option>'+state.clientes.map(c=>
+      `<option value="${esc(c.id)}">${esc(c.nombre)}</option>`).join('');
+    if(state.clientes.some(c=>idIgual(c.id,elegido)))sel.value=elegido;
+    seleccionarClienteCobro();
+  }
+  function seleccionarClienteCobro() {
+    const c=state.clientes.find(x=>idIgual(x.id,el('cobro-cliente-existente')?.value));
+    if(c) {
+      if(el('cobro-cliente'))el('cobro-cliente').value=c.nombre||'';
+      if(el('cobro-telefono'))el('cobro-telefono').value=c.telefono||'';
+    }
+    const asuntoSel=el('cobro-asunto-existente');if(!asuntoSel)return;
+    const elegido=asuntoSel.value;
+    asuntoSel.innerHTML='<option value="">-- Sin asunto asociado --</option>'+state.asuntos
+      .filter(a=>c&&idIgual(a.cliente_id,c.id)).map(a=>`<option value="${esc(a.id)}">${esc(a.titulo)} · ${esc(a.numero_proceso||'')}</option>`).join('');
+    if(state.asuntos.some(a=>idIgual(a.id,elegido) && c && idIgual(a.cliente_id,c.id)))asuntoSel.value=elegido;
+  }
+  window.esabasSeleccionarClienteCobro=seleccionarClienteCobro;
+  window.esabasAsuntoPertenece=(clienteId,asuntoId) => state.asuntos.some(a=>idIgual(a.id,asuntoId) && idIgual(a.cliente_id,clienteId));
+  function dibujarLista() {
+    const destino=el('esabas-lista-clientes');if(!destino)return;
+    const q=(el('esabas-buscar')?.value||'').trim().toLowerCase();
+    let lista=state.clientes.filter(c=>{
+      let asuntos=state.asuntos.filter(a=>idIgual(a.cliente_id,c.id));
+      return [c.nombre,c.telefono,c.email,c.direccion,...asuntos.flatMap(a=>[a.titulo,a.numero_proceso,a.servicio])].join(' ').toLowerCase().includes(q);
+    }).sort((a,b)=>String(a.nombre||'').localeCompare(String(b.nombre||''),'es'));
+    destino.innerHTML=lista.length?lista.map(c=>{
+      const n=state.asuntos.filter(a=>idIgual(a.cliente_id,c.id)).length;
+      return `<div class="esabas-linea ${idIgual(state.clienteId,c.id)?'seleccionada':''}">
+        <b>${esc(c.nombre)}</b><div class="esabas-mini">${esc(c.telefono || c.email || 'Sin contacto')} · ${n} asunto(s)</div>
+        <div class="esabas-tools"><button class="btn btn-secondary" type="button" data-legal="ver-cliente" data-id="${esc(c.id)}">Abrir ficha</button></div></div>`;
+    }).join(''):'<p class="esabas-mini" style="padding:12px">Sin clientes coincidentes. Puedes registrar uno desde «+ Cliente».</p>';
+  }
+  function input(name,label,value='',type='text') {
+    return `<label>${esc(label)}<input name="${esc(name)}" type="${esc(type)}" value="${esc(value)}"></label>`;
+  }
+  function formularioCliente(c) {
+    const d=el('esabas-form-cliente');d.hidden=false;
+    d.innerHTML=`<form id="esabas-cliente-form" class="esabas-form">
+    <h3 style="margin:0">${c?'Actualizar ficha':'Registrar cliente'}</h3>
+    ${input('nombre','Nombre completo *',c?.nombre||'')}
+    <div class="esabas-cols">${input('telefono','Teléfono',c?.telefono||'','tel')}${input('email','Correo',c?.email||'','email')}</div>
+    ${input('direccion','Dirección',c?.direccion||'')}
+    <label>Observaciones<textarea name="observaciones">${esc(c?.observaciones||'')}</textarea></label>
+    <div class="esabas-tools"><button class="btn btn-primary" type="submit">Guardar ficha</button>
+    <button class="btn btn-secondary" type="button" data-legal="cancelar-cliente">Cancelar</button></div></form>`;
+    d.scrollIntoView({block:'nearest',behavior:'smooth'});
+  }
+  function resumenCobros(cliente) {
+    const cargos=state.cargos.filter(c=>idIgual(c.cliente_id,cliente.id));
+    const abonos=state.abonos.filter(a=>idIgual(a.cliente_id,cliente.id));
+    const total=cargos.reduce((s,c)=>s+Number(c.monto||0),0);
+    const pagado=abonos.reduce((s,a)=>s+Number(a.monto||0),0);
+    return {cargos,abonos,total,pagado,saldo:Math.max(0,total-pagado)};
+  }
+  function dibujarFicha() {
+    const destino=el('esabas-ficha-cliente');if(!destino)return;
+    const c=state.clientes.find(x=>idIgual(x.id,state.clienteId));
+    if(!c){destino.innerHTML='';return;}
+    const r=resumenCobros(c);
+    const asuntos=state.asuntos.filter(x=>idIgual(x.cliente_id,c.id)).sort((a,b)=>String(b.fecha_inicio||'').localeCompare(String(a.fecha_inicio||'')));
+    const ap=state.agenda.filter(x=>idIgual(x.cliente_id,c.id));
+    const cs=state.cuotas.filter(x=>idIgual(x.cliente_id,c.id));
+    destino.innerHTML=`<div class="card"><div class="esabas-titulo">${esc(c.nombre)}</div>
+      <div class="esabas-mini">📞 ${esc(c.telefono||'—')} &nbsp; ✉ ${esc(c.email||'—')}</div>
+      <div class="esabas-mini">📍 ${esc(c.direccion||'Sin dirección')}</div>
+      ${c.observaciones?`<p class="esabas-mini">${esc(c.observaciones)}</p>`:''}
+      <div class="esabas-tools"><button type="button" class="btn btn-secondary" data-legal="editar-cliente">Editar cliente</button>
+      <button type="button" class="btn btn-primary" data-legal="nuevo-asunto">+ Asunto jurídico</button>
+      <button type="button" class="btn btn-secondary" data-legal="ir-cobros">Ver módulo de cobros</button></div>
+      <div class="esabas-cols"><div class="esabas-linea"><b>${moneda(r.total)}</b><div class="esabas-mini">Total obligaciones</div></div>
+      <div class="esabas-linea"><b>${moneda(r.pagado)}</b><div class="esabas-mini">Abonado</div></div>
+      <div class="esabas-linea"><b>${moneda(r.saldo)}</b><div class="esabas-mini">Saldo pendiente</div></div>
+      <div class="esabas-linea"><b>${ap.length} / ${cs.length}</b><div class="esabas-mini">Citas / cuotas</div></div></div>
+      <div id="esabas-form-asunto"></div>
+      <hr class="esabas-separador"><div class="esabas-titulo">Asuntos jurídicos (${asuntos.length})</div>
+      ${asuntos.length?asuntos.map(a=>`<div class="esabas-linea ${idIgual(state.asuntoId,a.id)?'seleccionada':''}">
+        <b>${esc(a.titulo)}</b><div class="esabas-mini">${esc(a.servicio||'Sin categoría')} · ${esc(a.numero_proceso||'Sin número de proceso')} · ${esc(a.estado||'Activo')}</div>
+        <div class="esabas-tools"><button type="button" class="btn btn-secondary" data-legal="ver-asunto" data-id="${esc(a.id)}">Abrir asunto</button></div></div>`).join(''):'<p class="esabas-mini">Todavía no hay asuntos vinculados.</p>'}
+      <div id="esabas-detalle-asunto"></div>
+      <hr class="esabas-separador"><div class="esabas-titulo">Movimientos del cliente</div>
+      ${r.cargos.length?r.cargos.map(x=>`<div class="esabas-tramite"><b>${esc(x.concepto||'Obligación')}</b> · ${moneda(x.monto)}<div class="esabas-mini">${esc(x.numero_comprobante||'Sin comprobante')} · Pendiente: ${moneda(x.saldo_pendiente)} · Vence: ${fecha(x.fecha)}</div></div>`).join(''):'<p class="esabas-mini">Sin obligaciones registradas.</p>'}
+      ${r.abonos.length?`<div class="esabas-titulo">Abonos recibidos</div>`+r.abonos.map(x=>`<div class="esabas-tramite">${fecha(x.fecha)} · ${moneda(x.monto)} · ${esc(x.tipo||'Abono')}</div>`).join(''):''}
+      ${state.actuaciones.some(x=>state.asuntos.some(a=>idIgual(a.id,x.asunto_id)&&idIgual(a.cliente_id,c.id)) && x.proxima_fecha)?`<div class="esabas-titulo">Próximas actuaciones</div>` + state.actuaciones.filter(x=>x.proxima_fecha && state.asuntos.some(a=>idIgual(a.id,x.asunto_id)&&idIgual(a.cliente_id,c.id))).sort((a,b)=>String(a.proxima_fecha).localeCompare(String(b.proxima_fecha))).slice(0,10).map(x=>`<div class="esabas-tramite">${fecha(x.proxima_fecha)} · ${esc(x.tipo||'Actuación')} · ${esc(state.asuntos.find(a=>idIgual(a.id,x.asunto_id))?.titulo||'')}</div>`).join(''):''}
+      ${ap.length?`<div class="esabas-titulo">Citas y vencimientos</div>`+ap.map(x=>`<div class="esabas-tramite">${fecha(x.fecha_evento)} · ${esc(x.titulo||'Cita')}</div>`).join(''):''}
+      ${cs.length?`<div class="esabas-titulo">Cuotas pactadas</div>`+cs.map(x=>`<div class="esabas-tramite">${fecha(x.fecha_pactada)} · ${moneda(x.monto_pactado)} · ${esc(x.estado||'pendiente')}</div>`).join(''):''}
+    </div>`;
+    dibujarAsunto();
+  }
+  function formularioAsunto(a) {
+    const d=el('esabas-form-asunto');if(!d)return;
+    d.innerHTML=`<form class="esabas-form" id="esabas-asunto-form">
+      <h3 style="margin:0">${a?'Editar asunto':'Nuevo asunto jurídico'}</h3>
+      ${input('titulo','Asunto / trámite *',a?.titulo||'')}
+      <div class="esabas-cols">${input('servicio','Área o servicio jurídico *',a?.servicio||'')}${input('numero_proceso','N.º de proceso / referencia',a?.numero_proceso||'')}</div>
+      <div class="esabas-cols">${input('fecha_inicio','Fecha de inicio',a?.fecha_inicio||hoyLocal(),'date')}
+        <label>Estado<select name="estado"><option value="activo" ${a?.estado==='activo'?'selected':''}>Activo</option><option value="en_espera" ${a?.estado==='en_espera'?'selected':''}>En espera</option><option value="cerrado" ${a?.estado==='cerrado'?'selected':''}>Cerrado</option></select></label></div>
+      <label>Descripción y antecedentes<textarea name="descripcion">${esc(a?.descripcion||'')}</textarea></label>
+      <div class="esabas-tools"><button class="btn btn-primary" type="submit">Guardar asunto</button>
+      <button class="btn btn-secondary" type="button" data-legal="cancelar-asunto">Cancelar</button></div></form>`;
+    d.scrollIntoView({block:'nearest',behavior:'smooth'});
+  }
+  function dibujarAsunto() {
+    const d=el('esabas-detalle-asunto');if(!d)return;
+    const a=state.asuntos.find(x=>idIgual(x.id,state.asuntoId)&&idIgual(x.cliente_id,state.clienteId));
+    if(!a){d.innerHTML='';return;}
+    const acts=state.actuaciones.filter(x=>idIgual(x.asunto_id,a.id)).sort((x,y)=>String(y.fecha_actuacion||'').localeCompare(String(x.fecha_actuacion||'')));
+    const cargos=state.cargos.filter(x=>idIgual(x.asunto_id,a.id));
+    const citas=state.agenda.filter(x=>idIgual(x.asunto_id,a.id));
+    d.innerHTML=`<div class="esabas-linea seleccionada"><div class="esabas-titulo">${esc(a.titulo)}</div>
+      <div class="esabas-mini">N.º proceso: ${esc(a.numero_proceso||'—')} · ${esc(a.servicio||'—')} · ${esc(a.estado||'activo')}</div>
+      <p class="esabas-mini">${esc(a.descripcion||'Sin descripción.')}</p>
+      <div class="esabas-tools"><button type="button" class="btn btn-secondary" data-legal="editar-asunto">Editar asunto</button>
+      <button type="button" class="btn btn-primary" data-legal="nueva-actuacion">+ Actuación</button>
+      <button type="button" class="btn btn-secondary" data-legal="nuevo-cargo">+ Cobro</button>
+      <button type="button" class="btn btn-secondary" data-legal="nueva-cita">+ Cita</button></div>
+      <div id="esabas-form-actuacion"></div><div id="esabas-form-cargo"></div><div id="esabas-form-cita"></div>
+      <div class="esabas-titulo">Historial de actuaciones (${acts.length})</div>
+      ${acts.length?acts.map(x=>{
+        const docs=state.adjuntos.filter(z=>idIgual(z.actuacion_id,x.id));
+        return `<div class="esabas-tramite" data-actuacion-id="${esc(x.id)}"><b>${fecha(x.fecha_actuacion)} · ${esc(x.tipo||'Actuación')}</b>
+          <p class="esabas-mini" style="white-space:pre-wrap">${esc(x.descripcion||'')}</p>
+          ${x.proxima_fecha?`<div class="esabas-mini">Próxima actuación o vencimiento: ${fecha(x.proxima_fecha)}</div>`:''}
+          ${docs.map(z=>`<div class="esabas-tools"><button type="button" class="btn btn-secondary" data-legal="abrir-adjunto" data-id="${esc(z.id)}">📎 ${esc(z.nombre_archivo||'Adjunto')}</button></div>`).join('')}
+          <div class="esabas-tools"><button type="button" class="btn btn-secondary" data-legal="adjuntar" data-id="${esc(x.id)}">Adjuntar documento</button></div>
+          <div id="esabas-adjuntar-${esc(x.id)}"></div></div>`;
+      }).join(''):'<p class="esabas-mini">No existen actuaciones registradas.</p>'}
+      ${cargos.length?`<div class="esabas-titulo">Obligaciones relacionadas</div>`+cargos.map(x=>`<div class="esabas-tramite">${esc(x.concepto)} · ${moneda(x.monto)} · pendiente ${moneda(x.saldo_pendiente)}</div>`).join(''):''}
+      ${citas.length?`<div class="esabas-titulo">Citas de este asunto</div>`+citas.map(x=>`<div class="esabas-tramite">${fecha(x.fecha_evento)} · ${esc(x.titulo)}</div>`).join(''):''}
+    </div>`;
+    if(typeof window.esabasDecorate === 'function') window.esabasDecorate();
+  }
+  function formActuacion() {
+    el('esabas-form-actuacion').innerHTML=`<form class="esabas-form" id="esabas-actuacion-form"><h3 style="margin:0">Registrar actuación</h3>
+    <div class="esabas-cols">${input('fecha_actuacion','Fecha *',hoyLocal(),'date')}${input('tipo','Tipo (escrito, audiencia, providencia...) *')}</div>
+    <label>Detalle de lo realizado *<textarea name="descripcion" required></textarea></label>
+    ${input('proxima_fecha','Próxima actuación o vencimiento', '', 'date')}
+    ${input('fecha_alarma','🔔 Recordatorio / alarma (fecha y hora, opcional)', '', 'datetime-local')}
+    <p class="esabas-mini">La alarma se enviará por el sistema de recordatorios de la Agenda (Telegram), incluso con la web cerrada. Elige una hora anterior o igual al día del vencimiento.</p>
+    <label>Adjuntar foto o documento (opcional)<input type="file" name="archivo" accept="image/*,.pdf,.doc,.docx,.txt"></label>
+    <p class="esabas-mini">Los documentos deben guardarse en un repositorio privado de Supabase Storage.</p>
+    <div class="esabas-tools"><button type="submit" class="btn btn-primary">Guardar actuación</button><button type="button" class="btn btn-secondary" data-legal="cancelar-form-actuacion">Cancelar</button></div></form>`;
+  }
+  function formCargo() {
+    el('esabas-form-cargo').innerHTML=`<form class="esabas-form" id="esabas-cargo-form"><h3 style="margin:0">Registrar obligación asociada al asunto</h3>
+      ${input('concepto','Concepto de cobro *')}
+      <div class="esabas-cols">${input('monto','Monto (USD) *','','number')}${input('fecha','Fecha de vencimiento',hoyLocal(),'date')}</div>
+      <p class="esabas-mini">Este registro es una obligación interna; no constituye factura electrónica autorizada por el SRI.</p>
+      <div class="esabas-tools"><button type="submit" class="btn btn-primary">Guardar obligación</button><button type="button" class="btn btn-secondary" data-legal="cancelar-form-cargo">Cancelar</button></div></form>`;
+  }
+  function formCita() {
+    el('esabas-form-cita').innerHTML=`<form class="esabas-form" id="esabas-cita-form"><h3 style="margin:0">Agendar diligencia del asunto</h3>
+      ${input('titulo','Título de cita *')}${input('fecha_evento','Fecha y hora *','','datetime-local')}
+      <label>Detalle<textarea name="detalle"></textarea></label>
+      <div class="esabas-tools"><button type="submit" class="btn btn-primary">Guardar cita</button><button type="button" class="btn btn-secondary" data-legal="cancelar-form-cita">Cancelar</button></div></form>`;
+  }
+  async function subirAdjunto(actuacionId, archivo) {
+    if(!archivo) return;
+    validarActivo();
+    const preparado=typeof window.esabasComprimirImagen === 'function' ? await window.esabasComprimirImagen(archivo) : {archivo:archivo,nombreOriginal:archivo.name,bytesOriginales:archivo.size};
+    archivo=preparado.archivo;
+    if(archivo.size>15*1024*1024) throw new Error('Archivo demasiado grande incluso después de optimizarlo. Límite: 15 MB.');
+    const act=state.actuaciones.find(x=>idIgual(x.id,actuacionId));
+    if(!act) throw new Error('No se encontró la actuación.');
+    const safeName=(archivo.name||'documento').replace(/[^a-zA-Z0-9_.-]/g,'_').slice(-100);
+    const ruta=`${act.asunto_id}/${actuacionId}/${uuid()}-${safeName}`;
+    const upload=await db().storage.from(BUCKET).upload(ruta,archivo,{upsert:false,contentType:archivo.type||'application/octet-stream'});
+    if(upload.error) throw new Error('Actuación guardada, pero no se pudo subir el documento: '+upload.error.message+'. Comprueba que exista el bucket privado '+BUCKET+'.');
+    try {
+      const meta=await guardar('actuaciones_adjuntos',{actuacion_id:actuacionId,nombre_archivo:preparado.nombreOriginal,ruta_storage:ruta,tipo_archivo:archivo.type||'application/octet-stream',bytes_originales:preparado.bytesOriginales,bytes_guardados:archivo.size});
+      state.adjuntos.push(meta);
+    } catch(e) {
+      await db().storage.from(BUCKET).remove([ruta]);
+      throw e;
+    }
+  }
+  async function abrirAdjunto(id) {
+    const a=state.adjuntos.find(x=>idIgual(x.id,id));if(!a)return;
+    const res=await db().storage.from(BUCKET).createSignedUrl(a.ruta_storage,120);
+    if(res.error) throw new Error('No se pudo abrir el archivo: '+res.error.message);
+    const p=el('esabas-mensaje');p.textContent='Documento listo: ';
+    const l=document.createElement('a');l.href=res.data.signedUrl;l.target='_blank';l.rel='noopener noreferrer';l.textContent='Abrir '+(a.nombre_archivo||'documento');l.style.color='#7dd3fc';p.appendChild(l);
+  }
+  async function manejarSubmit(e) {
+    const form=e.target;if(!form.id?.startsWith('esabas-'))return;
+    e.preventDefault();
+    const datos=Object.fromEntries(new FormData(form).entries());
+    const btn=form.querySelector('[type="submit"]');if(btn)btn.disabled=true;
+    try {
+      let nuevo;
+      if(form.id==='esabas-cliente-form') {
+        if(!datos.nombre?.trim()) throw new Error('El nombre del cliente es obligatorio.');
+        const nombreNormalizado=datos.nombre.trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ');
+        const duplicado=state.clientes.some(c => {
+          const cNormalizado=String(c.nombre||'').trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ');
+          return cNormalizado===nombreNormalizado && !(form.dataset.editar==='true' && idIgual(c.id,state.clienteId));
+        });
+        if(duplicado) throw new Error('Ya existe un cliente con ese nombre. Abre su ficha y agrega el nuevo asunto.');
+        const actual=state.clientes.find(c=>idIgual(c.id,state.clienteId));
+        nuevo=await guardar('clientes',{nombre:datos.nombre.trim(),telefono:datos.telefono||null,email:datos.email||null,direccion:datos.direccion||null,observaciones:datos.observaciones||null},form.dataset.editar==='true'?actual?.id:null);
+        state.clienteId=nuevo.id;state.asuntoId=null;el('esabas-form-cliente').hidden=true;el('esabas-form-cliente').innerHTML='';
+        if(typeof window.cargarCobros==='function') await window.cargarCobros();
+      } else if(form.id==='esabas-asunto-form') {
+        if(!datos.titulo?.trim()) throw new Error('El asunto requiere un título.');
+        if(!datos.servicio?.trim()) throw new Error('El área o servicio jurídico es obligatorio.');
+        const actual=state.asuntos.find(a=>idIgual(a.id,state.asuntoId));
+        const payload={cliente_id:state.clienteId,titulo:datos.titulo.trim(),servicio:datos.servicio.trim(),numero_proceso:datos.numero_proceso||null,fecha_inicio:datos.fecha_inicio||null,estado:datos.estado,descripcion:datos.descripcion||null};
+        if(datos.estado==='cerrado' && actual?.estado!=='cerrado') payload.fecha_cierre=hoyLocal();
+        if(datos.estado!=='cerrado' && actual?.estado==='cerrado')payload.fecha_cierre=null;
+        nuevo=await guardar('asuntos',payload,form.dataset.editar==='true'?actual?.id:null);
+        state.asuntoId=nuevo.id;
+      } else if(form.id==='esabas-actuacion-form') {
+        if(!datos.tipo?.trim()||!datos.descripcion?.trim()||!datos.fecha_actuacion) throw new Error('Completa tipo, fecha y descripción de la actuación.');
+        const alarmaIso = typeof window.esabasAlarmToUTC==='function' ? window.esabasAlarmToUTC(datos.fecha_alarma||'',datos.proxima_fecha||'') : null;
+        if(alarmaIso && Date.parse(alarmaIso)<=Date.now())throw new Error('Elige una fecha y hora futuras para el recordatorio.');
+        nuevo=await guardar('actuaciones',{asunto_id:state.asuntoId,fecha_actuacion:datos.fecha_actuacion,tipo:datos.tipo.trim(),descripcion:datos.descripcion.trim(),proxima_fecha:datos.proxima_fecha||null,fecha_alarma:alarmaIso});
+        // La actuación recién insertada todavía no estaba en state; sin esto
+        // el primer archivo adjunto fallaba por "No se encontró la actuación".
+        state.actuaciones.push(nuevo);
+        if(datos.archivo && datos.archivo.size) await subirAdjunto(nuevo.id,datos.archivo);
+      } else if(form.id==='esabas-cargo-form') {
+        const monto=Number(datos.monto);
+        if(!Number.isFinite(monto)||monto<=0||!datos.concepto?.trim()) throw new Error('Ingresa concepto y monto mayor a cero.');
+        const hoy=hoyLocal();
+        nuevo=await guardar('cobros_cargos',{cliente_id:state.clienteId,asunto_id:state.asuntoId,concepto:datos.concepto.trim(),cantidad:1,precio_unitario:monto,monto,saldo_pendiente:monto,estado:'pendiente',fecha_emision:hoy,fecha:datos.fecha||hoy,numero_comprobante:''});
+        if(typeof window.cargarCobros==='function') await window.cargarCobros();
+      } else if(form.id==='esabas-cita-form') {
+        if(!datos.titulo?.trim()||!datos.fecha_evento) throw new Error('Indica el título y la fecha de la cita.');
+        nuevo=await guardar('agenda',{cliente_id:state.clienteId,asunto_id:state.asuntoId,titulo:datos.titulo.trim(),detalle:datos.detalle||null,fecha_evento:new Date(datos.fecha_evento).toISOString(),completada:false});
+        if(typeof window.cargarAgenda==='function') await window.cargarAgenda();
+      } else if(form.classList.contains('esabas-adjunto-form')) {
+        if(!datos.archivo?.size)throw new Error('Selecciona un documento.');
+        await subirAdjunto(form.dataset.actuacionId,datos.archivo);
+      }
+      setMessage('Registro guardado correctamente en Supabase.','ok');
+      await cargar();
+    } catch(err) {console.error(err);setMessage(err.message,'error');}
+    finally {if(btn)btn.disabled=false;}
+  }
+  async function manejarClick(e) {
+    const b=e.target.closest('[data-legal]');if(!b)return;
+    const tipo=b.dataset.legal, id=b.dataset.id;
+    try {
+      switch(tipo) {
+        case 'navegar':window.cambiarPestana('clientes',b);if(el('view-desc'))el('view-desc').textContent='Clientes y Expedientes';await cargar();break;
+        case 'recargar':await cargar();break;
+        case 'nuevo-cliente':state.clienteId=null;state.asuntoId=null;formularioCliente(null);break;
+        case 'editar-cliente':formularioCliente(state.clientes.find(c=>idIgual(c.id,state.clienteId)));el('esabas-cliente-form').dataset.editar='true';break;
+        case 'cancelar-cliente':el('esabas-form-cliente').hidden=true;break;
+        case 'ver-cliente':state.clienteId=id;state.asuntoId=null;el('esabas-form-cliente').hidden=true;dibujarLista();dibujarFicha();el('esabas-ficha-cliente').scrollIntoView({block:'start',behavior:'smooth'});break;
+        case 'nuevo-asunto':state.asuntoId=null;formularioAsunto(null);break;
+        case 'ver-asunto':state.asuntoId=id;dibujarAsunto();el('esabas-detalle-asunto').scrollIntoView({block:'start',behavior:'smooth'});break;
+        case 'editar-asunto':formularioAsunto(state.asuntos.find(a=>idIgual(a.id,state.asuntoId)));el('esabas-asunto-form').dataset.editar='true';break;
+        case 'cancelar-asunto':el('esabas-form-asunto').innerHTML='';break;
+        case 'nueva-actuacion':formActuacion();break;
+        case 'nuevo-cargo':formCargo();break;
+        case 'nueva-cita':formCita();break;
+        case 'cancelar-form-actuacion':el('esabas-form-actuacion').innerHTML='';break;
+        case 'cancelar-form-cargo':el('esabas-form-cargo').innerHTML='';break;
+        case 'cancelar-form-cita':el('esabas-form-cita').innerHTML='';break;
+        case 'ir-cobros':{const btn=[...document.querySelectorAll('.bottom-nav .nav-btn')].find(x=>x.textContent.includes('Cobros'));window.cambiarPestana('cobros',btn);break;}
+        case 'adjuntar':{
+          const d=el('esabas-adjuntar-'+id);d.innerHTML=`<form id="esabas-adjunto-form-${esc(id)}" class="esabas-form esabas-adjunto-form" data-actuacion-id="${esc(id)}"><label>Documento<input type="file" name="archivo" required accept="image/*,.pdf,.doc,.docx,.txt"></label><button type="submit" class="btn btn-primary">Subir archivo privado</button></form>`;break;
+        }
+        case 'abrir-adjunto':await abrirAdjunto(id);break;
+      }
+    } catch(err) {console.error(err);setMessage(err.message,'error');}
+  }
+  function limpiar() {
+    for(const k of ['clientes','asuntos','actuaciones','adjuntos','cargos','abonos','agenda','cuotas'])state[k]=[];
+    state.clienteId=null;state.asuntoId=null;state.listo=false;
+    if(el('esabas-lista-clientes'))el('esabas-lista-clientes').innerHTML='';
+    if(el('esabas-ficha-cliente'))el('esabas-ficha-cliente').innerHTML='';
+    setMessage('');
+  }
+  document.addEventListener('DOMContentLoaded',() => {
+    htmlBase();
+    const navBtn=document.querySelector('[data-legal="navegar"]');
+    if(navBtn)navBtn.addEventListener('click',()=>manejarClick({target:navBtn}));
+    const iniciar=window.raietArrancar;
+    if(typeof iniciar==='function')window.raietArrancar=function(){iniciar();cargar();};
+  });
+  // Permite abrir la ficha jurídica desde cualquier otro módulo.
+  window.esabasAbrirCliente = function(clienteId) {
+    const navBtn=document.querySelector('[data-legal="navegar"]');
+    if (!navBtn) return;
+    window.cambiarPestana('clientes',navBtn);
+    state.clienteId=clienteId;state.asuntoId=null;
+    dibujarLista();dibujarFicha();
+    if(el('view-desc'))el('view-desc').textContent='Clientes y Expedientes';
+  };
+  window.esabasState=state;
+  window.esabasSubirAdjunto=subirAdjunto;
+  window.esabasLimpiarDatos=limpiar;
+  window.esabasCargarExpedientes=cargar;
+})();
+
+</script>
+<script src="./mejoras.js?v=final-20261115"></script>
+<script src="./edicion-financiera.js?v=final-20261115"></script>
 </body>
 </html>
