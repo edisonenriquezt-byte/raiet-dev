@@ -1434,7 +1434,7 @@
         var x = lista[i];
         var seguro = function(v) {return String(v||'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});};
         var tituloSeguro=seguro(x.titulo),detalleSeguro=seguro(x.detalle);
-        var txtAlarma = x.fecha_alarma ? ' • <span style="color:#fbbf24;">🔔 Alarma: ' + new Date(x.fecha_alarma).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'}) + '</span>' : '';
+        var txtAlarma = x.fecha_alarma ? ' • <span style="color:#fbbf24;">🔔 Alarma: ' + new Date(x.fecha_alarma).toLocaleString('es-EC', {timeZone:'America/Guayaquil',month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'}) + '</span>' : '';
         html += '<div class="card" style="margin-bottom: 12px; border-left: 5px solid var(--primary);">' +
           '<div style="display:flex; justify-content:space-between; align-items:flex-start;">' +
             '<div><div style="font-weight:700; font-size:1.02rem; ' + (x.completada ? 'text-decoration: line-through; opacity: 0.6;' : '') + '">' + tituloSeguro + '</div>' +
@@ -3091,6 +3091,8 @@
     <div class="esabas-cols">${input('fecha_actuacion','Fecha *',hoyLocal(),'date')}${input('tipo','Tipo (escrito, audiencia, providencia...) *')}</div>
     <label>Detalle de lo realizado *<textarea name="descripcion" required></textarea></label>
     ${input('proxima_fecha','Próxima actuación o vencimiento', '', 'date')}
+    ${input('fecha_alarma','🔔 Recordatorio / alarma (fecha y hora, opcional)', '', 'datetime-local')}
+    <p class="esabas-mini">La alarma se enviará por el sistema de recordatorios de la Agenda (Telegram), incluso con la web cerrada. Elige una hora anterior o igual al día del vencimiento.</p>
     <label>Adjuntar foto o documento (opcional)<input type="file" name="archivo" accept="image/*,.pdf,.doc,.docx,.txt"></label>
     <p class="esabas-mini">Los documentos deben guardarse en un repositorio privado de Supabase Storage.</p>
     <div class="esabas-tools"><button type="submit" class="btn btn-primary">Guardar actuación</button><button type="button" class="btn btn-secondary" data-legal="cancelar-form-actuacion">Cancelar</button></div></form>`;
@@ -3165,7 +3167,9 @@
         state.asuntoId=nuevo.id;
       } else if(form.id==='esabas-actuacion-form') {
         if(!datos.tipo?.trim()||!datos.descripcion?.trim()||!datos.fecha_actuacion) throw new Error('Completa tipo, fecha y descripción de la actuación.');
-        nuevo=await guardar('actuaciones',{asunto_id:state.asuntoId,fecha_actuacion:datos.fecha_actuacion,tipo:datos.tipo.trim(),descripcion:datos.descripcion.trim(),proxima_fecha:datos.proxima_fecha||null});
+        const alarmaIso = typeof window.esabasAlarmToUTC==='function' ? window.esabasAlarmToUTC(datos.fecha_alarma||'',datos.proxima_fecha||'') : null;
+        if(alarmaIso && Date.parse(alarmaIso)<=Date.now())throw new Error('Elige una fecha y hora futuras para el recordatorio.');
+        nuevo=await guardar('actuaciones',{asunto_id:state.asuntoId,fecha_actuacion:datos.fecha_actuacion,tipo:datos.tipo.trim(),descripcion:datos.descripcion.trim(),proxima_fecha:datos.proxima_fecha||null,fecha_alarma:alarmaIso});
         // La actuación recién insertada todavía no estaba en state; sin esto
         // el primer archivo adjunto fallaba por "No se encontró la actuación".
         state.actuaciones.push(nuevo);
@@ -3248,6 +3252,6 @@
 })();
 
 </script>
-<script src="./mejoras.js?v=20261115-1"></script>
+<script src="./mejoras.js?v=20261115-2"></script>
 </body>
 </html>
