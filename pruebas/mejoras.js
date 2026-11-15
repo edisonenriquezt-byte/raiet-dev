@@ -8,19 +8,65 @@ function fechaEC(){
  var p=new Intl.DateTimeFormat("en-US",{timeZone:"America/Guayaquil",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());
  var m={};p.forEach(function(x){m[x.type]=x.value;});return m.year+"-"+m.month+"-"+m.day;
 }
+
+function formatoAlarma(iso){
+ if(!iso)return "";
+ const d=new Date(iso);
+ return Number.isNaN(d.getTime())?"":new Intl.DateTimeFormat("es-EC",{
+  timeZone:"America/Guayaquil",year:"numeric",month:"2-digit",day:"2-digit",
+  hour:"2-digit",minute:"2-digit",hour12:false
+ }).format(d);
+}
+function alarmaLocalInput(iso){
+ if(!iso)return "";
+ const d=new Date(iso);if(Number.isNaN(d.getTime()))return "";
+ const p=new Intl.DateTimeFormat("en-GB",{
+  timeZone:"America/Guayaquil",year:"numeric",month:"2-digit",day:"2-digit",
+  hour:"2-digit",minute:"2-digit",hourCycle:"h23"
+ }).formatToParts(d);
+ let partes={};p.forEach(function(z){partes[z.type]=z.value;});
+ return partes.year+"-"+partes.month+"-"+partes.day+"T"+partes.hour+":"+partes.minute;
+}
+function alarmaAUTC(valor,proxima){
+ if(!valor)return null;
+ if(!proxima)throw new Error("Para programar una alarma debes indicar la próxima actuación o vencimiento.");
+ if(valor.slice(0,10)>proxima)throw new Error("La alarma no puede ser posterior a la fecha de la próxima actuación o vencimiento.");
+ const d=new Date(valor+":00-05:00");
+ if(!Number.isFinite(d.getTime()))throw new Error("Fecha u hora de alarma inválida.");
+ return d.toISOString();
+}
+window.esabasFormatoAlarma=formatoAlarma;
+window.esabasAlarmFromUTC=alarmaLocalInput;
+window.esabasAlarmToUTC=alarmaAUTC;
+
 function diasHasta(x){
  return Math.round((Date.parse(String(x).slice(0,10)+"T12:00:00Z")-Date.parse(fechaEC()+"T12:00:00Z"))/86400000);
 }
 function alertasLegales(){
  var s=window.esabasState;
  if(!s||!Array.isArray(s.actuaciones)||document.documentElement.classList.contains("raiet-bloqueado"))return [];
- return s.actuaciones.filter(function(a){return a.proxima_fecha && a.estado_vencimiento!=="cumplido";}).map(function(a){
+ var alertasGenerales=s.actuaciones.filter(function(a){return a.proxima_fecha && a.estado_vencimiento!=="cumplido";}).map(function(a){
   var dias=diasHasta(a.proxima_fecha);if(!Number.isFinite(dias)||dias>7)return null;
   var asunto=s.asuntos.find(function(x){return String(x.id)===String(a.asunto_id);});
   var cliente=asunto?s.clientes.find(function(x){return String(x.id)===String(asunto.cliente_id);}):null;
   var prefijo=dias<0?"🚨 PLAZO VENCIDO hace "+Math.abs(dias)+" día(s)":dias===0?"🚨 VENCE HOY":dias===1?"⚠️ VENCE MAÑANA":dias<=3?"⏳ Vence en "+dias+" días":"📅 Aviso preventivo: faltan "+dias+" días";
   return {color:dias<=1?"#ef4444":dias<=3?"#f59e0b":"#38bdf8",texto:prefijo+": <b>"+safe(cliente&&cliente.nombre||"Cliente")+"</b> · "+safe(asunto&&asunto.titulo||"Asunto")+" · "+safe(a.tipo||"Actuación")+" ("+safe(a.proxima_fecha)+")"};
  }).filter(Boolean);
+ var proximasAlarmas=s.actuaciones.filter(function(a){
+  if(!a.fecha_alarma || a.estado_vencimiento==="cumplido")return false;
+  var ms=new Date(a.fecha_alarma).getTime()-Date.now();
+  return Number.isFinite(ms) && ms<=86400000 && ms>=-86400000;
+ }).map(function(a){
+  var asunto=s.asuntos.find(function(x){return String(x.id)===String(a.asunto_id);});
+  var cliente=asunto?s.clientes.find(function(x){return String(x.id)===String(asunto.cliente_id);}):null;
+  var ms=new Date(a.fecha_alarma).getTime()-Date.now();
+  return {color:ms<=0?"#ef4444":"#f59e0b",texto:"🔔 "+
+   (ms<=0?"Recordatorio activado":"Alarma programada")+
+   ": <b>"+safe(cliente&&cliente.nombre||"Cliente")+"</b> · "+
+   safe(asunto&&asunto.titulo||"Asunto")+" · "+safe(a.tipo)+
+   " · "+safe(formatoAlarma(a.fecha_alarma))};
+ });
+ return alertasGenerales.concat(proximasAlarmas);
 }
 window.esabasAlertasPlazos=alertasLegales;
 function formInput(name,label,value,tipo){
@@ -46,6 +92,7 @@ function decorar(){
   if(a.estado_vencimiento==="cumplido")estado.style.color="#86efac";
   else if(a.proxima_fecha && diasHasta(a.proxima_fecha)<0)estado.style.color="#fca5a5";
   card.insertBefore(estado,card.firstChild.nextSibling);
+  if(a.fecha_alarma){var aviso=document.createElement("div");aviso.className="esabas-mini";aviso.style.color="#facc15";aviso.textContent="🔔 Recordatorio: "+formatoAlarma(a.fecha_alarma);card.insertBefore(aviso,estado.nextSibling);}
   var archivos=state.adjuntos.filter(function(z){return String(z.actuacion_id)===aid;});
   archivos.forEach(function(z){
    var b=card.querySelector('[data-legal="abrir-adjunto"][data-id="'+z.id+'"]');
@@ -71,6 +118,8 @@ function abrirEditor(aid){
   formInput("tipo","Tipo de actuación",a.tipo,"text")+'</div>'+
   '<label>Detalle de lo realizado<textarea name="descripcion" required>'+safe(a.descripcion||"")+'</textarea></label>'+
   formOptional("proxima_fecha","Próxima actuación o vencimiento",a.proxima_fecha,"date")+
+  formOptional("fecha_alarma","🔔 Recordatorio / alarma (fecha y hora, opcional)",alarmaLocalInput(a.fecha_alarma),"datetime-local")+
+  '<p class="esabas-mini">Si la programas, RAIET enviará el recordatorio por el sistema de alarmas de la Agenda (Telegram), incluso con esta página cerrada.</p>'+
   '<label>Estado del vencimiento<select name="estado_vencimiento">'+
   ["pendiente","reprogramado","cumplido"].map(function(v){return '<option value="'+v+'"'+((a.estado_vencimiento||"pendiente")===v?" selected":"")+'>'+estadoTexto(v)+'</option>';}).join("")+
   '</select></label>'+
@@ -90,12 +139,12 @@ async function verHistorial(aid){
   var r=await window.db.from("actuaciones_cambios").select("modificado_el,datos_anteriores,datos_nuevos").eq("actuacion_id",aid).order("modificado_el",{ascending:false});
   if(r.error)throw r.error;
   if(!r.data.length){panel.textContent="No existen modificaciones anteriores.";return;}
-  var nombres={fecha_actuacion:"Fecha",tipo:"Tipo",descripcion:"Detalle",proxima_fecha:"Próxima actuación o vencimiento",estado_vencimiento:"Estado"};
+  var nombres={fecha_actuacion:"Fecha",tipo:"Tipo",descripcion:"Detalle",proxima_fecha:"Próxima actuación o vencimiento",estado_vencimiento:"Estado",fecha_alarma:"🔔 Recordatorio"};
   panel.innerHTML='<b>Registro de modificaciones ('+r.data.length+')</b>'+r.data.map(function(item){
    var old=item.datos_anteriores||{},nuevo=item.datos_nuevos||{};
    var dif=Object.keys(nombres).filter(function(k){return String(old[k]||"")!==String(nuevo[k]||"");}).map(function(k){
-    return '<div style="margin:4px 0">'+safe(nombres[k])+': <span style="color:#fca5a5">'+safe(old[k]||"—")+
-    '</span> → <span style="color:#86efac">'+safe(nuevo[k]||"—")+'</span></div>';
+    return '<div style="margin:4px 0">'+safe(nombres[k])+': <span style="color:#fca5a5">'+safe(k==="fecha_alarma" ? formatoAlarma(old[k])||"—" : old[k]||"—")+
+    '</span> → <span style="color:#86efac">'+safe(k==="fecha_alarma" ? formatoAlarma(nuevo[k])||"—" : nuevo[k]||"—")+'</span></div>';
    }).join("");
    var f=new Date(item.modificado_el);
    return '<div style="padding:9px 0;border-top:1px solid #334155"><b>'+safe(f.toLocaleString("es-EC"))+'</b>'+dif+'</div>';
@@ -111,6 +160,14 @@ async function guardarEdicion(e){
  var datos=new FormData(f), fecha=String(datos.get("fecha_actuacion")||""), tipo=String(datos.get("tipo")||"").trim();
  var desc=String(datos.get("descripcion")||"").trim(), prox=String(datos.get("proxima_fecha")||"");
  var estado=String(datos.get("estado_vencimiento")||"pendiente");
+ var alarmaTexto=String(datos.get("fecha_alarma")||"");
+ var alarmaIso;
+ try{
+  alarmaIso=alarmaAUTC(alarmaTexto,prox);
+  if(alarmaIso && Date.parse(alarmaIso)<=Date.now() && alarmaTexto!==alarmaLocalInput(previo.fecha_alarma))
+   throw new Error("La alarma debe programarse para una fecha y hora futuras.");
+ }catch(error){alert(error.message);return;}
+ if(estado==="cumplido")alarmaIso=null;
  if(!fecha||!tipo||!desc){alert("Completa la fecha, el tipo y la descripción.");return;}
  if(prox && previo.proxima_fecha && prox!==previo.proxima_fecha && estado==="pendiente")estado="reprogramado";
  if(estado==="reprogramado" && !prox){alert("Para reprogramar debes indicar una nueva fecha.");return;}
@@ -121,7 +178,8 @@ async function guardarEdicion(e){
   var au=await window.db.auth.getUser();
   if(au.error || !au.data.user || au.data.user.id!==ADMIN)throw new Error("Sesión no autorizada.");
   var resp=await window.db.from("actuaciones").update({
-   fecha_actuacion:fecha,tipo:tipo,descripcion:desc,proxima_fecha:prox||null,estado_vencimiento:estado
+   fecha_actuacion:fecha,tipo:tipo,descripcion:desc,proxima_fecha:prox||null,estado_vencimiento:estado,
+   fecha_alarma:alarmaIso
   }).eq("id",aid).eq("asunto_id",previo.asunto_id).select().single();
   if(resp.error)throw resp.error;
   var adjunto=datos.get("archivo");
