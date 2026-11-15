@@ -1,4 +1,5 @@
 
+# Firma permanente: activación inicial tras configurar los cuatro Repository secrets.
 name: Crear APK Android RAIET ESABAS
 
 on:
