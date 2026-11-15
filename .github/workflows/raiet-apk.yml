@@ -255,8 +255,11 @@ jobs:
                   }
           """
           text = text.replace(needle, signed, 1)
+          release = "        release {"
+          assert text.count(release) == 1, "No se encuentra buildType release"
+          text = text.replace(release, release + "\n            signingConfig signingConfigs.raiet", 1)
           p.write_text(text)
-          print("Gradle configurado con firma estable")
+          print("Gradle configurado con firma estable para release y debug")
           PY
           else
             echo "Modo prueba: APK firmada temporalmente con identificador beta."
@@ -274,12 +277,18 @@ jobs:
 
           chmod +x gradlew
 
-          ./gradlew assembleDebug --no-daemon
+          if [ "$RAIET_SIGNED" = "true" ]; then
+            ./gradlew assembleRelease --no-daemon
+            echo "RAIET_APK_PATH=android/app/build/outputs/apk/release/app-release.apk" >> "$GITHUB_ENV"
+          else
+            ./gradlew assembleDebug --no-daemon
+            echo "RAIET_APK_PATH=android/app/build/outputs/apk/debug/app-debug.apk" >> "$GITHUB_ENV"
+          fi
 
       - name: Verificar APK
         shell: bash
         run: |
-          APK="android/app/build/outputs/apk/debug/app-debug.apk"
+          APK="$RAIET_APK_PATH"
 
           if [ ! -f "$APK" ]; then
             echo "ERROR: No se genero la APK."
@@ -290,6 +299,7 @@ jobs:
           ls -lh "$APK"
           cp "$APK" RAIET-ESABAS.apk
           sha256sum RAIET-ESABAS.apk
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs RAIET-ESABAS.apk
 
           echo "Verificando icono real incluido dentro de la APK..."
           .raiet-icon-venv/bin/python - <<'PY'
