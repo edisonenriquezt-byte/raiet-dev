@@ -17,6 +17,7 @@ on:
       - "edicion-financiera.js"
       - "raiet-interacciones.js"
       - "raiet-respaldo.js"
+      - "raiet-gestion.js"
       - "manifest.json"
       - "sw.js"
       - "icon-192.png"
@@ -118,6 +119,7 @@ jobs:
           cp edicion-financiera.js www/
           cp raiet-interacciones.js www/
           cp raiet-respaldo.js www/
+          cp raiet-gestion.js www/
           cp manifest.json www/
           cp sw.js www/
           cp icon-192.png www/
@@ -130,10 +132,11 @@ jobs:
 
           echo "Verificando componentes instalables..."
           grep -q 'RAIET ESABAS' www/index.html
-          grep -q 'mejoras.js?v=20261115-22' www/index.html
-          grep -q 'edicion-financiera.js?v=20261115-22' www/index.html
+          grep -q 'mejoras.js?v=20261115-23' www/index.html
+          grep -q 'edicion-financiera.js?v=20261115-23' www/index.html
           node --check www/raiet-interacciones.js
           node --check www/raiet-respaldo.js
+          node --check www/raiet-gestion.js
           node --check www/mejoras.js
           node --check www/edicion-financiera.js
           node --check www/acceso-esabas.js

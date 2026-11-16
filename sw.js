@@ -1,14 +1,15 @@
-const CACHE_NAME = 'raiet-esabas-directorio-clientes-v22-20261115';
+const CACHE_NAME = 'raiet-esabas-gestion-integral-v23-20261115';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './manifest.json',
-  './acceso-esabas.js?v=20261115-22',
+  './acceso-esabas.js?v=20261115-23',
   './raiet-native.js',
-  './mejoras.js?v=20261115-22',
-  './edicion-financiera.js?v=20261115-22',
-  './raiet-interacciones.js?v=20261115-22',
-  './raiet-respaldo.js?v=20261115-22',
+  './mejoras.js?v=20261115-23',
+  './edicion-financiera.js?v=20261115-23',
+  './raiet-interacciones.js?v=20261115-23',
+  './raiet-respaldo.js?v=20261115-23',
+  './raiet-gestion.js?v=20261115-23',
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'
 ];
 

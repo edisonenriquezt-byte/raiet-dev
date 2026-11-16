@@ -7,7 +7,7 @@ const TABLAS = [
  "agenda","asuntos","clientes","cobros_abonos","cobros_cargos","compromisos_pago",
  "inventario_movimientos","inventario_productos","movimientos_financieros_cambios",
  "pacientes","pacientes_evoluciones","pacientes_examenes","pacientes_recetas",
- "pagos_abonos","pagos_cargos"
+ "pagos_abonos","pagos_cargos","gestion_items","gestion_historial"
 ];
 const UID_ADMIN="4c2b8c98-200f-4307-8d7c-6d8742feb17a";
 const PROYECTO="fwkdtcecdwxezzkphxiv";
@@ -132,10 +132,10 @@ async function descifrar(contenido,clave){
  catch(_){throw new Error("El respaldo se descifró pero su contenido está dañado.");}
  if(payload.formato!=="RAIET-ESABAS-DATOS-1" || payload.proyecto!==PROYECTO)
    throw new Error("Este archivo no contiene los datos del proyecto RAIET.");
- if(!payload.tablas || TABLAS.some(t=>!Array.isArray(payload.tablas[t])))
-   throw new Error("El respaldo no contiene las 19 tablas esperadas.");
+ if(!payload.tablas || !(TABLAS.every(t=>Array.isArray(payload.tablas[t])) || TABLAS.slice(0,19).every(t=>Array.isArray(payload.tablas[t]))))
+   throw new Error("El respaldo no contiene las tablas principales esperadas.");
  let filas=0;
- for(const t of TABLAS)filas+=payload.tablas[t].length;
+ for(const t of Object.keys(payload.tablas))filas+=payload.tablas[t].length;
  if(filas!==payload.totalFilas)throw new Error("No coincide el conteo de registros.");
  if(!Array.isArray(payload.archivos) || payload.archivos.length!==payload.tablas.actuaciones_adjuntos.length)
    throw new Error("Faltan documentos privados en el respaldo.");
@@ -180,7 +180,7 @@ function abrirDialogo(){
  panel.style.cssText="width:100%;max-width:520px;padding:18px;background:#101827;border:1px solid #64748b;border-radius:12px;color:#fff;line-height:1.5;font:14px Arial";
  const titulo=document.createElement("h3");titulo.textContent="Respaldo cifrado de RAIET";
  const ayuda=document.createElement("p");
- ayuda.textContent="Copia las 19 tablas y los documentos jurídicos privados. Guárdala FUERA de Supabase. La contraseña no se almacena; perderla impide recuperar la copia.";
+ ayuda.textContent="Copia las 21 tablas, incluyendo Gestión, y los documentos jurídicos privados. Guárdala FUERA de Supabase. La contraseña no se almacena; perderla impide recuperar la copia.";
  ayuda.style.cssText="margin:12px 0;color:#cbd5e1";
  const clave=document.createElement("input");
  clave.type="password";clave.placeholder="Contraseña para el respaldo (mínimo 12 caracteres)";clave.autocomplete="new-password";clave.style.cssText="width:100%;padding:12px;margin:8px 0;background:#111e32;color:white;border:1px solid #64748b;border-radius:8px";

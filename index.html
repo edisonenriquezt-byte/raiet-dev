@@ -127,7 +127,7 @@
   }
 </style>
 <script src="./raiet-native.js"></script>
-<script src="./acceso-esabas.js?v=20261115-22"></script>
+<script src="./acceso-esabas.js?v=20261115-23"></script>
 <!-- FIN CONTROL DE ACCESO -->
 
   <style>
@@ -671,7 +671,7 @@
 
   <script>
     if ('serviceWorker' in navigator) {
-      if (location.protocol==='https:') navigator.serviceWorker.register('./sw.js?v=20261115-22',{updateViaCache:'none'}).catch(function(err) { console.log('SW error:', err); });
+      if (location.protocol==='https:') navigator.serviceWorker.register('./sw.js?v=20261115-23',{updateViaCache:'none'}).catch(function(err) { console.log('SW error:', err); });
     }
 
     var SUPABASE_URL = 'https://fwkdtcecdwxezzkphxiv.supabase.co';
@@ -1141,7 +1141,8 @@
           (x.detalle ? '<div style="font-size:0.82rem; color:#cbd5e1; background:var(--card-inner); padding:7px 10px; border-radius:6px; margin:8px 0;">📝 ' + detalleSeguro + '</div>' : '') +
           (x.foto_url ? '<button class="thumb-btn" style="margin-top:6px;" onclick="abrirVisor(\'' + x.foto_url + '\')">📷 Ver Documento</button>' : '') +
           '<div style="display:flex; justify-content: flex-end; gap: 8px; margin-top: 10px;">' +
-            (x.actuacion_id ? '<span style="color:#93c5fd;font-size:0.73rem">⚖ Evento del expediente. Editar desde Clientes.</span>' :
+            (x.gestion_id ? '<button class="btn btn-secondary" onclick="window.raietAbrirGestion(\'' + x.gestion_id + '\')">🧭 Abrir en Gestión</button>' :
+            x.actuacion_id ? '<span style="color:#93c5fd;font-size:0.73rem">⚖ Evento del expediente. Editar desde Clientes.</span>' :
             '<button class="btn btn-secondary" onclick="abrirModalEditarAgenda(\'' + x.id + '\')">✏️ Editar</button>' +
             '<button class="btn btn-secondary" onclick="toggleAgenda(\'' + x.id + '\', ' + x.completada + ')">' + (x.completada ? 'Reabrir' : 'Tachar') + '</button>' +
             '<button class="btn btn-danger" onclick="borrarAgenda(\'' + x.id + '\')">✕ Anular</button>'
@@ -3087,9 +3088,10 @@
 })();
 
 </script>
-<script src="./mejoras.js?v=20261115-22"></script>
-<script src="./edicion-financiera.js?v=20261115-22"></script>
-<script src="./raiet-interacciones.js?v=20261115-22"></script>
-<script src="./raiet-respaldo.js?v=20261115-22"></script>
+<script src="./mejoras.js?v=20261115-23"></script>
+<script src="./edicion-financiera.js?v=20261115-23"></script>
+<script src="./raiet-interacciones.js?v=20261115-23"></script>
+<script src="./raiet-respaldo.js?v=20261115-23"></script>
+<script src="./raiet-gestion.js?v=20261115-23"></script>
 </body>
 </html>
