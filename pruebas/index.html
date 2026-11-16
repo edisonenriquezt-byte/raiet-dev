@@ -1005,7 +1005,7 @@
 
   <script>
     if ('serviceWorker' in navigator) {
-      if (location.protocol==='https:') navigator.serviceWorker.register('./sw.js?v=20261115-21',{updateViaCache:'none'}).catch(function(err) { console.log('SW error:', err); });
+      if (location.protocol==='https:') navigator.serviceWorker.register('./sw.js?v=20261115-22',{updateViaCache:'none'}).catch(function(err) { console.log('SW error:', err); });
     }
 
     var SUPABASE_URL = 'https://fwkdtcecdwxezzkphxiv.supabase.co';
@@ -2935,7 +2935,7 @@
     section.className = 'tab-content';
     section.innerHTML = `
       <div class="card"><h2 style="margin:0 0 8px;font-size:19px;">Clientes y asuntos jurídicos</h2>
-        <p class="esabas-mini">Una ficha por cliente, con múltiples trámites, actuaciones y movimientos económicos vinculados.</p>
+        <p class="esabas-mini">Directorio único de clientes: algunos pueden tener cobros aunque todavía no tengan asuntos jurídicos.</p>
         <div id="esabas-mensaje" role="status"></div>
         <div class="esabas-tools"><button type="button" class="btn btn-secondary" data-legal="recargar">↻ Actualizar</button>
         <button type="button" class="btn btn-primary" data-legal="nuevo-cliente">+ Cliente</button></div>
@@ -3018,7 +3018,12 @@
   window.esabasAsuntoPertenece=(clienteId,asuntoId) => state.asuntos.some(a=>idIgual(a.id,asuntoId) && idIgual(a.cliente_id,clienteId));
   function dibujarLista() {
     const destino=el('esabas-lista-clientes');if(!destino)return;
-    const q=(el('esabas-buscar')?.value||'').trim().toLowerCase();
+    const fichaActiva=state.clienteId!=null && state.clientes.some(c=>idIgual(c.id,state.clienteId));
+    destino.hidden=fichaActiva;
+    const buscador=el('esabas-buscar');
+    if(buscador)buscador.hidden=fichaActiva;
+    if(fichaActiva){destino.innerHTML='';return;}
+    const q=(buscador?.value||'').trim().toLowerCase();
     let lista=state.clientes.filter(c=>{
       let asuntos=state.asuntos.filter(a=>idIgual(a.cliente_id,c.id));
       return [c.nombre,c.telefono,c.email,c.direccion,...asuntos.flatMap(a=>[a.titulo,a.numero_proceso,a.servicio])].join(' ').toLowerCase().includes(q);
@@ -3060,7 +3065,7 @@
     const asuntos=state.asuntos.filter(x=>idIgual(x.cliente_id,c.id)).sort((a,b)=>String(b.fecha_inicio||'').localeCompare(String(a.fecha_inicio||'')));
     const ap=state.agenda.filter(x=>idIgual(x.cliente_id,c.id));
     const cs=state.cuotas.filter(x=>idIgual(x.cliente_id,c.id));
-    destino.innerHTML=`<div class="card"><div class="esabas-titulo">${esc(c.nombre)}</div>
+    destino.innerHTML=`<div class="card"><div class="esabas-tools"><button type="button" class="btn btn-secondary" data-legal="volver-clientes">← Volver a clientes</button></div><div class="esabas-titulo">${esc(c.nombre)}</div>
       <div class="esabas-mini">📞 ${esc(c.telefono||'—')} &nbsp; ✉ ${esc(c.email||'—')}</div>
       <div class="esabas-mini">📍 ${esc(c.direccion||'Sin dirección')}</div>
       ${c.observaciones?`<p class="esabas-mini">${esc(c.observaciones)}</p>`:''}
@@ -3345,7 +3350,14 @@
       switch(tipo) {
         case 'navegar':window.cambiarPestana('clientes',b);if(el('view-desc'))el('view-desc').textContent='Clientes y Expedientes';await cargar();break;
         case 'recargar':await cargar();break;
-        case 'nuevo-cliente':state.clienteId=null;state.asuntoId=null;formularioCliente(null);break;
+        case 'nuevo-cliente':state.clienteId=null;state.asuntoId=null;dibujarLista();dibujarFicha();formularioCliente(null);break;
+        case 'volver-clientes':{
+          state.clienteId=null;state.asuntoId=null;
+          el('esabas-form-cliente').hidden=true;
+          dibujarLista();dibujarFicha();
+          el('esabas-lista-clientes')?.scrollIntoView({block:'start',behavior:'smooth'});
+          break;
+        }
         case 'editar-cliente':formularioCliente(state.clientes.find(c=>idIgual(c.id,state.clienteId)));el('esabas-cliente-form').dataset.editar='true';break;
         case 'cancelar-cliente':el('esabas-form-cliente').hidden=true;break;
         case 'ver-cliente':state.clienteId=id;state.asuntoId=null;el('esabas-form-cliente').hidden=true;dibujarLista();dibujarFicha();el('esabas-ficha-cliente').scrollIntoView({block:'start',behavior:'smooth'});break;
@@ -3381,7 +3393,8 @@
   function limpiar() {
     for(const k of ['clientes','asuntos','actuaciones','adjuntos','cargos','abonos','agenda','cuotas'])state[k]=[];
     state.clienteId=null;state.asuntoId=null;state.listo=false;
-    if(el('esabas-lista-clientes'))el('esabas-lista-clientes').innerHTML='';
+    if(el('esabas-lista-clientes')){el('esabas-lista-clientes').hidden=false;el('esabas-lista-clientes').innerHTML='';}
+    if(el('esabas-buscar'))el('esabas-buscar').hidden=false;
     if(el('esabas-ficha-cliente'))el('esabas-ficha-cliente').innerHTML='';
     setMessage('');
   }
@@ -3408,9 +3421,9 @@
 })();
 
 </script>
-<script src="./mejoras.js?v=20261115-21"></script>
-<script src="./edicion-financiera.js?v=20261115-21"></script>
-<script src="../raiet-interacciones.js?v=20261115-21"></script>
-<script src="../raiet-respaldo.js?v=20261115-21"></script>
+<script src="./mejoras.js?v=20261115-22"></script>
+<script src="./edicion-financiera.js?v=20261115-22"></script>
+<script src="../raiet-interacciones.js?v=20261115-22"></script>
+<script src="../raiet-respaldo.js?v=20261115-22"></script>
 </body>
 </html>

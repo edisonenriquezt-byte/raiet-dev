@@ -1,14 +1,14 @@
-const CACHE_NAME = 'raiet-esabas-sin-falsos-guardados-v21-20261115';
+const CACHE_NAME = 'raiet-esabas-directorio-clientes-v22-20261115';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './manifest.json',
-  './acceso-esabas.js?v=20261115-21',
+  './acceso-esabas.js?v=20261115-22',
   './raiet-native.js',
-  './mejoras.js?v=20261115-21',
-  './edicion-financiera.js?v=20261115-21',
-  './raiet-interacciones.js?v=20261115-21',
-  './raiet-respaldo.js?v=20261115-21',
+  './mejoras.js?v=20261115-22',
+  './edicion-financiera.js?v=20261115-22',
+  './raiet-interacciones.js?v=20261115-22',
+  './raiet-respaldo.js?v=20261115-22',
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'
 ];
 
