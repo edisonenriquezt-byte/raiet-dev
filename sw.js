@@ -1,16 +1,16 @@
-const CACHE_NAME = 'raiet-esabas-inventario-peps-cpp-v25-20261115';
+const CACHE_NAME = 'raiet-esabas-inventario-operaciones-v26-20261116';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './manifest.json',
-  './acceso-esabas.js?v=20261115-25',
+  './acceso-esabas.js?v=20261115-26',
   './raiet-native.js',
-  './mejoras.js?v=20261115-25',
-  './edicion-financiera.js?v=20261115-25',
-  './raiet-interacciones.js?v=20261115-25',
-  './raiet-respaldo.js?v=20261115-25',
-  './raiet-gestion.js?v=20261115-25',
-  './raiet-inventario.js?v=20261115-25',
+  './mejoras.js?v=20261115-26',
+  './edicion-financiera.js?v=20261115-26',
+  './raiet-interacciones.js?v=20261115-26',
+  './raiet-respaldo.js?v=20261115-26',
+  './raiet-gestion.js?v=20261115-26',
+  './raiet-inventario.js?v=20261115-26',
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'
 ];
 

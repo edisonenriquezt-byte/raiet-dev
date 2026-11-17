@@ -14,6 +14,110 @@ async function seguridad(){
  const a=await window.db.auth.getUser();
  if(a.error||a.data?.user?.id!==ADMIN)throw Error("Usuario no autorizado.");
 }
+
+/* Vista operativa: una compra o venta se registra primero; el Kardex y stock reflejan el resultado. */
+let vistaInventario="compras";
+function navegacionOperativa(){
+ const area=$("tab-inventario"),controles=$("inv-raiet-contenedor");
+ if(!area||!controles||$("inv-operativo-nav"))return;
+ const crear=(tag,id,content)=>{const e=document.createElement(tag);e.id=id;if(content)e.innerHTML=content;return e;};
+ const nav=crear("div","inv-operativo-nav",
+  '<div style="font-size:12px;font-weight:800;color:#94a3b8;margin:4px 0 10px">OPERACIONES DE INVENTARIO</div>'+
+  '<div class="inv-operativo-menu">'+
+  '<button type="button" class="btn btn-secondary" data-inv-r="vista" data-vista="compras">🟢 Compras</button>'+
+  '<button type="button" class="btn btn-secondary" data-inv-r="vista" data-vista="ventas">🔴 Ventas</button>'+
+  '<button type="button" class="btn btn-secondary" data-inv-r="vista" data-vista="inventario">📦 Inventario</button>'+
+  '<button type="button" class="btn btn-secondary" data-inv-r="vista" data-vista="transacciones">📒 Transacciones</button></div>');
+ const compra=crear("div","inv-vista-compras",'<div class="card"><h3>🟢 Registrar compra de mercadería</h3>'+
+  '<p class="inv-raiet-help">Selecciona un producto existente. Al confirmar, aumentará su stock y se recalcularán el costo y los precios.</p>'+
+  '<div class="form-group"><label>Producto<select id="inv-operativo-producto-compra"></select></label></div>'+
+  '<button class="btn btn-primary" type="button" data-inv-r="abrir-compra">＋ Nueva compra</button></div>');
+ const venta=crear("div","inv-vista-ventas",'<div class="card"><h3>🔴 Registrar venta de mercadería</h3>'+
+  '<p class="inv-raiet-help">Selecciona un producto con existencias. La venta descuenta stock por PEPS y mantiene el precio de la transacción.</p>'+
+  '<div class="form-group"><label>Producto<select id="inv-operativo-producto-venta"></select></label></div>'+
+  '<button class="btn btn-primary" type="button" data-inv-r="abrir-venta">− Nueva venta</button></div>');
+ const inventario=crear("div","inv-vista-inventario");
+ const transacciones=crear("div","inv-vista-transacciones",'<div id="inv-operativo-transacciones"></div>');
+ const nota=controles.querySelector(".card:not([id])");
+ const estado=$("inv-raiet-mensaje");
+ const formularioVista=$("inv-raiet-formulario");
+ const etiquetaArchivados=controles.querySelector("label");
+ const creacion=area.querySelector(":scope > .card");
+ const buscador=area.querySelector(":scope > .search-filter-box");
+ const listado=$("lista-inventario");
+ if(!creacion||!buscador||!listado||!formularioVista||!nota||!estado)throw Error("Estructura original de Inventario incompleta.");
+ area.insertBefore(nav,area.firstChild);
+ nav.after(nota);
+ nota.after(estado);
+ for(const item of [compra,venta,inventario,transacciones])area.appendChild(item);
+ const detalle=crear("details","inv-operativo-nuevo-producto",'<summary style="cursor:pointer;font-weight:700;padding:12px 0">＋ Registrar producto nuevo / stock inicial</summary>');
+ detalle.appendChild(creacion);inventario.appendChild(detalle);
+ inventario.appendChild(buscador);
+ if(etiquetaArchivados)inventario.appendChild(etiquetaArchivados);
+ inventario.appendChild(listado);
+ compra.appendChild(formularioVista);
+ controles.remove();
+ const estilos=document.createElement("style");
+ estilos.textContent="#inv-operativo-nav{margin:12px 0} #inv-operativo-nav .inv-operativo-menu{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px} #inv-operativo-nav button{white-space:nowrap;min-width:0;font-size:12px;padding:12px 7px} #inv-operativo-nav button.inv-activo{background:#2563eb;color:white;border-color:#2563eb} #inv-vista-compras[hidden],#inv-vista-ventas[hidden],#inv-vista-inventario[hidden],#inv-vista-transacciones[hidden]{display:none!important} #inv-operativo-nuevo-producto{margin-bottom:10px} #inv-operativo-transacciones .card{margin-bottom:8px} #inv-vista-compras .form-group,#inv-vista-ventas .form-group{margin:12px 0} #inv-vista-compras select,#inv-vista-ventas select{display:block;width:100%;padding:11px;margin-top:6px;border:1px solid #334155;background:#101827;color:#f8fafc;border-radius:8px}";
+ document.head.appendChild(estilos);
+ mostrarVistaInventario(vistaInventario);
+}
+function mostrarVistaInventario(vista){
+ if(!["compras","ventas","inventario","transacciones"].includes(vista))return;
+ vistaInventario=vista;
+ for(const v of ["compras","ventas","inventario","transacciones"]){
+  const panel=$("inv-vista-"+v);if(panel)panel.hidden=v!==vista;
+ }
+ for(const boton of document.querySelectorAll("#inv-operativo-nav [data-inv-r='vista']")){
+  const marcado=boton.dataset.vista===vista;
+  boton.classList.toggle("inv-activo",marcado);
+  boton.setAttribute("aria-pressed",String(marcado));
+ }
+ panelCerrar();
+ if(vista==="transacciones")renderTransaccionesInventario();
+}
+function actualizarOpcionesInventario(){
+ for(const tipo of ["compra","venta"]){
+  const el=$("inv-operativo-producto-"+tipo);if(!el)continue;
+  const anterior=el.value;
+  const productos=(window.cacheInv||[]).filter(p=>p.activo!==false);
+  el.innerHTML='<option value="">— Selecciona un producto —</option>'+
+   productos.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.codigo)+' · '+esc(p.nombre)+
+   ' (stock '+esc(p.stock)+')</option>').join("");
+  if(productos.some(p=>String(p.id)===String(anterior)))el.value=anterior;
+ }
+}
+function renderTransaccionesInventario(){
+ const cont=$("inv-operativo-transacciones");if(!cont)return;
+ const items=[];
+ for(const p of window.cacheInv||[]){
+  for(const m of p.inventario_movimientos||[])items.push({p,m});
+ }
+ items.sort((a,b)=>Number(b.m.orden_fifo||0)-Number(a.m.orden_fifo||0));
+ if(!items.length){cont.innerHTML='<div class="card"><p>Sin transacciones registradas. Crea una compra para comenzar.</p></div>';return;}
+ const activos=items.filter(x=>!x.m.anulado);
+ const entradas=activos.filter(x=>x.m.tipo==="compra").length;
+ const salidas=activos.filter(x=>x.m.tipo==="venta").length;
+ cont.innerHTML='<div class="card"><h3>Historial de entradas y salidas</h3>'+
+  '<p class="inv-raiet-help">'+entradas+' compras · '+salidas+' ventas · '+(items.length-activos.length)+' anulaciones. Los totales se actualizan después de cada operación.</p></div>'+
+  items.map(({p,m})=>{
+   const entrada=m.tipo==="compra",anulada=!!m.anulado;
+   return '<div class="card'+(anulada?" inv-raiet-void":"")+'">'+
+    '<strong>'+(entrada?"🟢 Compra / entrada":"🔴 Venta / salida")+
+    ' · '+esc(p.codigo)+' · '+esc(p.nombre)+'</strong>'+
+    (anulada?' <b>(ANULADA)</b>':"")+
+    '<p class="inv-raiet-help">'+esc(m.fecha||"")+' · '+
+    'Movimiento: <b>'+(entrada?"+":"−")+esc(m.cantidad)+' unidades</b> · '+
+    (entrada?"Costo de compra":"Precio de venta")+": "+precio(m.precio_unitario)+
+    ' · Total: '+precio(m.total)+'</p>'+
+    '<p class="inv-raiet-help">Inventario actual de este producto: <b>'+esc(p.stock)+
+    ' unidades</b> · CPP restante: '+precio(p.costo_promedio)+
+    ' · PVP mayor: '+precio(p.precio_mayor)+' · PVP unidad: '+precio(p.precio_unidad)+'</p>'+
+    (entrada?"":'<p class="inv-raiet-help">Costo de salida PEPS: '+precio(m.costo_salida)+'</p>')+
+    '</div>';
+  }).join("");
+}
+
 function montaje(){
  const seccion=$("tab-inventario");
  if(!seccion||$("inv-raiet-contenedor"))return;
@@ -32,6 +136,7 @@ function montaje(){
  seccion.addEventListener("click",clicks);
  seccion.addEventListener("submit",submit);
  $("inv-raiet-archivados").addEventListener("change",()=>window.dibujarInventario());
+ navegacionOperativa();
 }
 async function foto(campo){
  const file=campo?.files?.[0];
@@ -100,6 +205,8 @@ window.dibujarInventario=function(){
    '</div><div class="ledger-section"><div class="ledger-title">📒 Kardex · '+(p.inventario_movimientos||[]).length+' registros</div>'+
     tarjetaMovimientos(p)+'</div></div></div>';
  }).join("");
+ actualizarOpcionesInventario();
+ if(vistaInventario==="transacciones")renderTransaccionesInventario();
 };
 window.renderInventario=window.dibujarInventario;
 window.cargarInventario=async function(){
@@ -133,7 +240,10 @@ window.guardarProductoInventario=async function(){
 function formulario(id,tipo){
  const p=(window.cacheInv||[]).find(x=>String(x.id)===String(id));
  if(!p||p.activo===false)return mensaje("Producto no disponible.",true);
- const panel=$("inv-raiet-formulario");panel.hidden=false;
+ const panel=$("inv-raiet-formulario");
+ const destino=$("inv-vista-"+(tipo==="compra"?"compras":"ventas"));
+ if(destino&&panel.parentNode!==destino)destino.appendChild(panel);
+ panel.hidden=false;
  panel.innerHTML='<form id="inv-raiet-operacion" data-id="'+esc(id)+'" data-tipo="'+tipo+'">'+
  '<h3>'+(tipo==="compra"?"🟢 Registrar compra":"🔴 Registrar venta")+' · '+esc(p.nombre)+'</h3>'+
  '<p class="inv-raiet-help">Stock: '+esc(p.stock)+' · CPP: '+precio(p.costo_promedio)+'</p>'+
@@ -188,7 +298,14 @@ function clicks(e){
  const b=e.target?.closest?.("[data-inv-r]");if(!b)return;
  e.preventDefault();e.stopPropagation();
  const a=b.dataset.invR,id=b.dataset.id;
- if(a==="toggle"){
+ if(a==="vista"){
+  mostrarVistaInventario(b.dataset.vista);
+ }else if(a==="abrir-compra"||a==="abrir-venta"){
+  const tipo=a==="abrir-compra"?"compra":"venta";
+  const selector=$("inv-operativo-producto-"+tipo);
+  if(!selector||!selector.value){mensaje("Selecciona un producto. Si es nuevo, créalo primero desde Inventario.",true);return;}
+  formulario(selector.value,tipo);
+ }else if(a==="toggle"){
   const v=window.invAbiertos||[],i=v.indexOf(String(id));if(i>=0)v.splice(i,1);else v.push(String(id));
   window.invAbiertos=v;window.dibujarInventario();
  }else if(a==="compra"||a==="venta")formulario(id,a);
