@@ -19,7 +19,9 @@ function montaje(){
  if(!seccion||$("inv-raiet-contenedor"))return;
  const div=document.createElement("div");
  div.id="inv-raiet-contenedor";
- div.innerHTML='<div id="inv-raiet-mensaje" role="status" style="font-size:12px;margin:10px 0;white-space:pre-wrap"></div>'+
+ div.innerHTML='<div class="card" style="margin:10px 0;padding:13px 16px"><strong>Precios configurados para demostración</strong>'+
+ '<p style="margin:6px 0 0;line-height:1.55;font-size:13px;color:#cbd5e1"><b>Mayorista: costo +15 %</b> · <b>Unidad: costo +35 %</b>. Son porcentajes ilustrativos, ajustables según las necesidades y políticas comerciales de cada cliente.</p></div>'+
+ '<div id="inv-raiet-mensaje" role="status" style="font-size:12px;margin:10px 0;white-space:pre-wrap"></div>'+
  '<div class="card" id="inv-raiet-formulario" hidden></div>'+
  '<label style="display:flex;gap:8px;align-items:center;font-size:12px;color:#94a3b8;margin:12px 0"><input type="checkbox" id="inv-raiet-archivados"> Mostrar archivados</label>';
  const lista=$("lista-inventario");
@@ -89,7 +91,7 @@ window.dibujarInventario=function(){
    '<div><span>Costo ponderado de existencias</span><strong>'+precio(p.costo_promedio)+'</strong></div>'+
    '<div><span>Mayor (+15 %)</span><strong>'+precio(p.precio_mayor)+'</strong></div>'+
    '<div><span>Unidad (+35 %)</span><strong>'+precio(p.precio_unidad)+'</strong></div></div>'+
-   '<p class="inv-raiet-help">PEPS: salen primero las unidades antiguas. Los precios se calculan según el promedio ponderado del stock que queda.</p>'+
+   '<p class="inv-raiet-help">PEPS: salen primero las unidades antiguas. Los precios se calculan según el promedio ponderado del stock que queda. <b>Los recargos +15 % y +35 % son demostrativos:</b> se pueden personalizar para cada cliente.</p>'+
    (p.foto_url?'<div class="inv-raiet-btns"><button type="button" class="thumb-btn" data-inv-r="foto-producto" data-id="'+esc(p.id)+'">📷 Foto</button></div>':"")+
    '<div class="inv-raiet-btns">'+(arch?'<button type="button" class="btn btn-secondary" data-inv-r="reactivar" data-id="'+esc(p.id)+'">Reactivar</button>':
     '<button type="button" class="btn btn-primary" data-inv-r="compra" data-id="'+esc(p.id)+'">＋ Compra</button>'+
