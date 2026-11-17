@@ -17,6 +17,7 @@ async function seguridad(){
 
 /* Vista operativa: una compra o venta se registra primero; el Kardex y stock reflejan el resultado. */
 let vistaInventario="compras";
+const detallesMovimientos=new Set();
 function navegacionOperativa(){
  const area=$("tab-inventario"),controles=$("inv-raiet-contenedor");
  if(!area||!controles||$("inv-operativo-nav"))return;
@@ -99,13 +100,17 @@ function renderTransaccionesInventario(){
  const entradas=activos.filter(x=>x.m.tipo==="compra").length;
  const salidas=activos.filter(x=>x.m.tipo==="venta").length;
  cont.innerHTML='<div class="card"><h3>Historial de entradas y salidas</h3>'+
-  '<p class="inv-raiet-help">'+entradas+' compras · '+salidas+' ventas · '+(items.length-activos.length)+' anulaciones. Los totales se actualizan después de cada operación.</p></div>'+
+  '<p class="inv-raiet-help">'+entradas+' compras · '+salidas+' ventas · '+(items.length-activos.length)+' anulaciones. Pulsa una operación para consultar sus detalles; la X la anula sin eliminarla del historial.</p></div>'+
   items.map(({p,m})=>{
-   const entrada=m.tipo==="compra",anulada=!!m.anulado;
+   const entrada=m.tipo==="compra",anulada=!!m.anulado,abierto=detallesMovimientos.has(String(m.id));
+   const tipo=entrada?"Compra / entrada":"Venta / salida";
    return '<div class="card'+(anulada?" inv-raiet-void":"")+'">'+
-    '<strong>'+(entrada?"🟢 Compra / entrada":"🔴 Venta / salida")+
-    ' · '+esc(p.codigo)+' · '+esc(p.nombre)+'</strong>'+
-    (anulada?' <b>(ANULADA)</b>':"")+
+    '<div class="inv-raiet-trans-header">'+
+    '<button type="button" class="inv-raiet-detalle" data-inv-r="detalle" data-mov="'+esc(m.id)+'" aria-expanded="'+(abierto?"true":"false")+'" title="Consultar datos de esta transacción">'+
+    '<strong>'+(entrada?"🟢 ":"🔴 ")+tipo+' · '+esc(p.codigo)+' · '+esc(p.nombre)+'</strong>'+
+    (anulada?' <b>(ANULADA)</b>':"")+' <span aria-hidden="true">'+(abierto?"▲":"▼")+'</span></button>'+
+    (anulada?"":'<button type="button" class="inv-raiet-x" data-inv-r="anular" data-mov="'+esc(m.id)+'" title="Anular esta '+(entrada?"compra":"venta")+'" aria-label="Anular '+(entrada?"compra":"venta")+' de '+esc(m.cantidad)+' unidades de '+esc(p.nombre)+'">×</button>')+
+    '</div>'+
     '<p class="inv-raiet-help">'+esc(m.fecha||"")+' · '+
     'Movimiento: <b>'+(entrada?"+":"−")+esc(m.cantidad)+' unidades</b> · '+
     (entrada?"Costo de compra":"Precio de venta")+": "+precio(m.precio_unitario)+
@@ -113,11 +118,18 @@ function renderTransaccionesInventario(){
     '<p class="inv-raiet-help">Inventario actual de este producto: <b>'+esc(p.stock)+
     ' unidades</b> · CPP restante: '+precio(p.costo_promedio)+
     ' · PVP mayor: '+precio(p.precio_mayor)+' · PVP unidad: '+precio(p.precio_unidad)+'</p>'+
-    (entrada?"":'<p class="inv-raiet-help">Costo de salida PEPS: '+precio(m.costo_salida)+'</p>')+
+    (abierto?'<div class="inv-raiet-trans-detalle"><p><b>Operación:</b> '+tipo+' · <b>Estado:</b> '+(anulada?"ANULADA":"Vigente")+'</p>'+
+      '<p><b>Producto:</b> '+esc(p.codigo)+' · '+esc(p.nombre)+'</p>'+
+      '<p><b>Fecha:</b> '+esc(m.fecha||"No indicada")+' · <b>Cantidad:</b> '+esc(m.cantidad)+' unidades</p>'+
+      '<p><b>'+(entrada?"Costo unitario":"Precio de venta unitario")+
+      ':</b> '+precio(m.precio_unitario)+' · <b>Total:</b> '+precio(m.total)+'</p>'+
+      (entrada?"":'<p><b>Modalidad:</b> '+esc(m.tipo_precio==="mayor"?"Mayorista":"Por unidad")+' · <b>Costo de salida PEPS:</b> '+precio(m.costo_salida)+'</p>')+
+      '<p><b>Observación:</b> '+esc(m.detalle||"Sin observaciones")+'</p>'+
+      (m.foto_url?'<button type="button" class="thumb-btn" data-inv-r="foto" data-mov="'+esc(m.id)+'">🧾 Ver comprobante</button>':"")+
+      '<p class="inv-raiet-help">Referencia del movimiento: '+esc(m.id)+'</p></div>':"")+
     '</div>';
   }).join("");
 }
-
 function montaje(){
  const seccion=$("tab-inventario");
  if(!seccion||$("inv-raiet-contenedor"))return;
@@ -131,7 +143,7 @@ function montaje(){
  const lista=$("lista-inventario");
  if(lista)lista.parentNode.insertBefore(div,lista);else seccion.appendChild(div);
  const css=document.createElement("style");
- css.textContent="#inv-raiet-formulario[hidden]{display:none!important} #inv-raiet-formulario .form-group{margin:10px 0} #inv-raiet-formulario input,#inv-raiet-formulario select,#inv-raiet-formulario textarea{display:block;width:100%;padding:10px;margin-top:5px;background:#101827;border:1px solid #334155;border-radius:7px;color:#f8fafc} #tab-inventario .inv-raiet-btns{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0} #tab-inventario .inv-raiet-help{font-size:12px;color:#a7b3c5;margin:7px 0;line-height:1.5} #tab-inventario .inv-raiet-void{opacity:.52}";
+ css.textContent="#inv-raiet-formulario[hidden]{display:none!important} #inv-raiet-formulario .form-group{margin:10px 0} #inv-raiet-formulario input,#inv-raiet-formulario select,#inv-raiet-formulario textarea{display:block;width:100%;padding:10px;margin-top:5px;background:#101827;border:1px solid #334155;border-radius:7px;color:#f8fafc} #tab-inventario .inv-raiet-btns{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0} #tab-inventario .inv-raiet-help{font-size:12px;color:#a7b3c5;margin:7px 0;line-height:1.5} #tab-inventario .inv-raiet-void{opacity:.52} #inv-operativo-transacciones .inv-raiet-trans-header{display:flex;align-items:center;gap:8px} #inv-operativo-transacciones .inv-raiet-detalle{flex:1;display:flex;align-items:center;justify-content:space-between;gap:8px;text-align:left;border:0;background:transparent;color:inherit;cursor:pointer;padding:5px 0;min-width:0;font:inherit} #inv-operativo-transacciones .inv-raiet-x{width:36px;height:36px;flex-shrink:0;border-radius:8px;border:1px solid #ef4444;color:#fecaca;background:#451a1a;cursor:pointer;font-size:25px;font-weight:700;line-height:1} #inv-operativo-transacciones .inv-raiet-trans-detalle{border-top:1px solid #334155;padding:12px 0 2px;margin-top:10px;font-size:13px;overflow-wrap:anywhere} #inv-operativo-transacciones .inv-raiet-trans-detalle p{margin:5px 0;line-height:1.55}";
  document.head.appendChild(css);
  seccion.addEventListener("click",clicks);
  seccion.addEventListener("submit",submit);
@@ -283,7 +295,12 @@ async function submit(e){
 }
 function panelCerrar(){const p=$("inv-raiet-formulario");if(p){p.innerHTML="";p.hidden=true;}}
 async function anular(id){
- if(!confirm("¿Anular este movimiento? Se conservará en el historial. Si la anulación deja ventas sin stock, se rechazará."))return;
+ const encontrado=(window.cacheInv||[]).flatMap(p=>(p.inventario_movimientos||[]).map(m=>({p,m}))).find(x=>String(x.m.id)===String(id));
+ if(!encontrado){mensaje("No se encontró el movimiento. Actualiza el inventario.",true);return;}
+ if(encontrado.m.anulado){mensaje("Este movimiento ya está anulado.",true);return;}
+ const {p,m}=encontrado;
+ const descripcion=(m.tipo==="compra"?"COMPRA":"VENTA")+" de "+m.cantidad+" unidades de "+p.nombre+" por "+precio(m.total);
+ if(!confirm("¿Anular la "+descripcion+"?\n\nSe recalcularán las existencias, el CPP y los precios. El movimiento permanecerá visible como ANULADO. Si una compra respalda ventas posteriores, RAIET rechazará la anulación."))return;
  try{await escribir("raiet_inventario_anular_movimiento",{p_movimiento:id});mensaje("✓ Movimiento anulado, con historial conservado.");}
  catch(e){mensaje("No se pudo anular: "+(e?.message||"error"),true);}
 }
@@ -305,6 +322,10 @@ function clicks(e){
   const selector=$("inv-operativo-producto-"+tipo);
   if(!selector||!selector.value){mensaje("Selecciona un producto. Si es nuevo, créalo primero desde Inventario.",true);return;}
   formulario(selector.value,tipo);
+ }else if(a==="detalle"){
+  const mid=String(b.dataset.mov||"");
+  if(detallesMovimientos.has(mid))detallesMovimientos.delete(mid);else detallesMovimientos.add(mid);
+  renderTransaccionesInventario();
  }else if(a==="toggle"){
   const v=window.invAbiertos||[],i=v.indexOf(String(id));if(i>=0)v.splice(i,1);else v.push(String(id));
   window.invAbiertos=v;window.dibujarInventario();
