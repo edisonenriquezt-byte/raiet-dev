@@ -127,7 +127,7 @@
   }
 </style>
 <script src="./raiet-native.js"></script>
-<script src="./acceso-esabas.js?v=20261115-27"></script>
+<script src="./acceso-esabas.js?v=20261116-28"></script>
 <!-- FIN CONTROL DE ACCESO -->
 
   <style>
@@ -666,12 +666,12 @@
     <button class="nav-btn" onclick="cambiarPestana('cobros', this)"><svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 1.34 5 3s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>Cobros</button>
     <button class="nav-btn" onclick="cambiarPestana('pagos', this)"><svg viewBox="0 0 24 24"><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>Pagos</button>
     <button class="nav-btn" onclick="cambiarPestana('inventario', this)"><svg viewBox="0 0 24 24"><path d="M20 2H4c-1 0-2 .9-2 2v3.01c0 .72.43 1.34 1 1.69V20c0 1.1 1.1 2 2 2h14c.9 0 2-.9 2-2V8.7c.57-.35 1-.97 1-1.69V4c0-1.1-1-2-2-2zm-1 18H5V9h14v11zm1-13H4V4h16v3z"/></svg>Inventario</button>
-    <button class="nav-btn" onclick="cambiarPestana('pacientes', this)"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-4H7v-2h4V7h2v4h4v2h-4v4z"/></svg>Pacientes</button>
+    <button class="nav-btn" onclick="cambiarPestana('pacientes', this)"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-4H7v-2h4V7h2v4h4v2h-4v4z"/></svg>Historia Clínica</button>
   </nav>
 
   <script>
     if ('serviceWorker' in navigator) {
-      if (location.protocol==='https:') navigator.serviceWorker.register('./sw.js?v=20261115-27',{updateViaCache:'none'}).catch(function(err) { console.log('SW error:', err); });
+      if (location.protocol==='https:') navigator.serviceWorker.register('./sw.js?v=20261116-28',{updateViaCache:'none'}).catch(function(err) { console.log('SW error:', err); });
     }
 
     var SUPABASE_URL = 'https://fwkdtcecdwxezzkphxiv.supabase.co';
@@ -693,7 +693,7 @@
     var cacheCobros = JSON.parse(localStorage.getItem('raiet_dev_cobros') || '[]');
     var cachePagos = JSON.parse(localStorage.getItem('raiet_dev_pagos') || '[]');
     var cacheInv = JSON.parse(localStorage.getItem('raiet_dev_inv') || '[]');
-    var cachePac = JSON.parse(localStorage.getItem('raiet_dev_pac') || '[]');
+    var cachePac = []; // Historias clínicas: solo datos de Supabase, nunca caché local.
     var cacheCompromisos = JSON.parse(localStorage.getItem('raiet_dev_compromisos') || '[]');
 
     function checkConexion() {
@@ -719,7 +719,6 @@
         localStorage.setItem('raiet_dev_cobros', JSON.stringify(cacheCobros));
         localStorage.setItem('raiet_dev_pagos', JSON.stringify(cachePagos));
         localStorage.setItem('raiet_dev_inv', JSON.stringify(cacheInv));
-        localStorage.setItem('raiet_dev_pac', JSON.stringify(cachePac));
         localStorage.setItem('raiet_dev_compromisos', JSON.stringify(cacheCompromisos));
       } catch (e) {
         console.warn('Memoria local llena:', e);
@@ -749,7 +748,7 @@
       else if (tab === 'cobros') desc.innerText = 'Cobros y Clientes';
       else if (tab === 'pagos') desc.innerText = 'Cuentas por Pagar';
       else if (tab === 'inventario') desc.innerText = 'Inventarios y CPP';
-      else if (tab === 'pacientes') desc.innerText = 'Expedientes Clínicos';
+      else if (tab === 'pacientes') desc.innerText = 'Historia Clínica';
     }
 
     function procesarArchivoImagen(inputElement, callback) {
@@ -3088,11 +3087,12 @@
 })();
 
 </script>
-<script src="./mejoras.js?v=20261115-27"></script>
-<script src="./edicion-financiera.js?v=20261115-27"></script>
-<script src="./raiet-interacciones.js?v=20261115-27"></script>
-<script src="./raiet-respaldo.js?v=20261115-27"></script>
-<script src="./raiet-gestion.js?v=20261115-27"></script>
-<script src="./raiet-inventario.js?v=20261115-27"></script>
+<script src="./mejoras.js?v=20261116-28"></script>
+<script src="./edicion-financiera.js?v=20261116-28"></script>
+<script src="./raiet-interacciones.js?v=20261116-28"></script>
+<script src="./raiet-respaldo.js?v=20261116-28"></script>
+<script src="./raiet-gestion.js?v=20261116-28"></script>
+<script src="./raiet-inventario.js?v=20261116-28"></script>
+<script src="./raiet-historia-clinica.js?v=20261116-28"></script>
 </body>
 </html>

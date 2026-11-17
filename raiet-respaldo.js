@@ -7,7 +7,8 @@ const TABLAS = [
  "agenda","asuntos","clientes","cobros_abonos","cobros_cargos","compromisos_pago",
  "inventario_movimientos","inventario_productos","movimientos_financieros_cambios",
  "pacientes","pacientes_evoluciones","pacientes_examenes","pacientes_recetas",
- "pagos_abonos","pagos_cargos","gestion_items","gestion_historial"
+ "pagos_abonos","pagos_cargos","gestion_items","gestion_historial",
+ "pacientes_documentos","pacientes_historial","pacientes_citas"
 ];
 const UID_ADMIN="4c2b8c98-200f-4307-8d7c-6d8742feb17a";
 const PROYECTO="fwkdtcecdwxezzkphxiv";
@@ -59,19 +60,24 @@ async function obtenerDatos(client,status){
    }
    tablas[tabla]=filas;totalFilas+=filas.length;
  }
- const referencias=tablas.actuaciones_adjuntos||[];
+ const referencias=[
+  ...(tablas.actuaciones_adjuntos||[]).map(x=>({ruta:x.ruta_storage,bucket:BUCKET,mime:x.tipo_archivo,nombre:x.nombre_archivo})),
+  ...(tablas.pacientes_documentos||[]).map(x=>({ruta:x.archivo_ruta,bucket:"raiet-clinica",mime:x.mime,nombre:x.nombre_archivo})),
+  ...(tablas.pacientes_examenes||[]).filter(x=>x.archivo_ruta).map(x=>({ruta:x.archivo_ruta,bucket:"raiet-clinica",mime:"application/octet-stream",nombre:x.nombre_archivo}))
+ ].filter((r,i,a)=>a.findIndex(x=>x.bucket===r.bucket&&x.ruta===r.ruta)===i);
  const archivos=[];
  for(let i=0;i<referencias.length;i++){
    const ref=referencias[i];
    status("Copiando documentos privados "+(i+1)+"/"+referencias.length);
-   if(!ref.ruta_storage)throw new Error("Adjunto sin ruta en Supabase.");
-   const r=await client.storage.from(BUCKET).download(ref.ruta_storage);
-   if(r.error || !r.data)throw new Error("No se pudo respaldar «"+(ref.nombre_archivo||"adjunto")+"»: "+(r.error?.message||"sin contenido"));
+   if(!ref.ruta)throw new Error("Adjunto sin ruta en Supabase.");
+   const r=await client.storage.from(ref.bucket).download(ref.ruta);
+   if(r.error || !r.data)throw new Error("No se pudo respaldar «"+(ref.nombre||"adjunto")+"»: "+(r.error?.message||"sin contenido"));
    const bytes=new Uint8Array(await r.data.arrayBuffer());
    if(!bytes.length)throw new Error("Documento vacío en Storage: "+(ref.nombre_archivo||"adjunto"));
    archivos.push({
-     ruta:ref.ruta_storage,
-     mime:ref.tipo_archivo||"application/octet-stream",
+     ruta:ref.ruta,
+     bucket:ref.bucket,
+     mime:ref.mime||"application/octet-stream",
      tamano:bytes.length,
      sha256:await sha256(bytes),
      contenido:bytesA64(bytes)
@@ -132,12 +138,17 @@ async function descifrar(contenido,clave){
  catch(_){throw new Error("El respaldo se descifró pero su contenido está dañado.");}
  if(payload.formato!=="RAIET-ESABAS-DATOS-1" || payload.proyecto!==PROYECTO)
    throw new Error("Este archivo no contiene los datos del proyecto RAIET.");
- if(!payload.tablas || !(TABLAS.every(t=>Array.isArray(payload.tablas[t])) || TABLAS.slice(0,19).every(t=>Array.isArray(payload.tablas[t]))))
+ if(!payload.tablas || !(TABLAS.every(t=>Array.isArray(payload.tablas[t])) || TABLAS.slice(0,TABLAS.length-3).every(t=>Array.isArray(payload.tablas[t])) || TABLAS.slice(0,19).every(t=>Array.isArray(payload.tablas[t]))))
    throw new Error("El respaldo no contiene las tablas principales esperadas.");
  let filas=0;
  for(const t of Object.keys(payload.tablas))filas+=payload.tablas[t].length;
  if(filas!==payload.totalFilas)throw new Error("No coincide el conteo de registros.");
- if(!Array.isArray(payload.archivos) || payload.archivos.length!==payload.tablas.actuaciones_adjuntos.length)
+ const rutasEsperadas=[
+   ...(payload.tablas.actuaciones_adjuntos||[]).map(x=>BUCKET+":"+x.ruta_storage),
+   ...(payload.tablas.pacientes_documentos||[]).map(x=>"raiet-clinica:"+x.archivo_ruta),
+   ...(payload.tablas.pacientes_examenes||[]).filter(x=>x.archivo_ruta).map(x=>"raiet-clinica:"+x.archivo_ruta)
+ ];
+ if(!Array.isArray(payload.archivos) || payload.archivos.length!==new Set(rutasEsperadas).size)
    throw new Error("Faltan documentos privados en el respaldo.");
  for(const f of payload.archivos){
    const blob=a64Bytes(f.contenido);

@@ -122,6 +122,7 @@ jobs:
           cp raiet-respaldo.js www/
           cp raiet-gestion.js www/
           cp raiet-inventario.js www/
+          cp raiet-historia-clinica.js www/
           cp manifest.json www/
           cp sw.js www/
           cp icon-192.png www/
@@ -134,12 +135,14 @@ jobs:
 
           echo "Verificando componentes instalables..."
           grep -q 'RAIET ESABAS' www/index.html
-          grep -q 'mejoras.js?v=20261115-27' www/index.html
-          grep -q 'edicion-financiera.js?v=20261115-27' www/index.html
+          grep -q 'mejoras.js?v=20261116-28' www/index.html
+          grep -q 'edicion-financiera.js?v=20261116-28' www/index.html
+          grep -q 'raiet-historia-clinica.js?v=20261116-28' www/index.html
           node --check www/raiet-interacciones.js
           node --check www/raiet-respaldo.js
           node --check www/raiet-gestion.js
           node --check www/raiet-inventario.js
+          node --check www/raiet-historia-clinica.js
           node --check www/mejoras.js
           node --check www/edicion-financiera.js
           node --check www/acceso-esabas.js

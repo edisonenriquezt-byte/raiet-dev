@@ -1,16 +1,17 @@
-const CACHE_NAME = 'raiet-esabas-inventario-transacciones-anulacion-v27-20261116';
+const CACHE_NAME = 'raiet-esabas-historia-clinica-v28-20261116';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './manifest.json',
-  './acceso-esabas.js?v=20261115-27',
+  './acceso-esabas.js?v=20261116-28',
   './raiet-native.js',
-  './mejoras.js?v=20261115-27',
-  './edicion-financiera.js?v=20261115-27',
-  './raiet-interacciones.js?v=20261115-27',
-  './raiet-respaldo.js?v=20261115-27',
-  './raiet-gestion.js?v=20261115-27',
-  './raiet-inventario.js?v=20261115-27',
+  './mejoras.js?v=20261116-28',
+  './edicion-financiera.js?v=20261116-28',
+  './raiet-interacciones.js?v=20261116-28',
+  './raiet-respaldo.js?v=20261116-28',
+  './raiet-gestion.js?v=20261116-28',
+  './raiet-inventario.js?v=20261116-28',
+  './raiet-historia-clinica.js?v=20261116-28',
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'
 ];
 
@@ -45,7 +46,7 @@ self.addEventListener('fetch', (event) => {
   const url = event.request.url;
 
   // Ignorar llamadas directas a la API de Supabase (las maneja la cola outbox de index.html)
-  if (url.includes('.supabase.co/rest/v1/')) {
+  if (url.includes('.supabase.co/')) {
     return;
   }
 
