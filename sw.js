@@ -1,17 +1,17 @@
-const CACHE_NAME = 'raiet-esabas-historia-clinica-v28-20261116';
+const CACHE_NAME = 'raiet-esabas-web-v29-20261118';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './manifest.json',
-  './acceso-esabas.js?v=20261116-28',
+  './acceso-esabas.js?v=20261118-29',
   './raiet-native.js',
-  './mejoras.js?v=20261116-28',
-  './edicion-financiera.js?v=20261116-28',
-  './raiet-interacciones.js?v=20261116-28',
-  './raiet-respaldo.js?v=20261116-28',
-  './raiet-gestion.js?v=20261116-28',
-  './raiet-inventario.js?v=20261116-28',
-  './raiet-historia-clinica.js?v=20261116-28',
+  './mejoras.js?v=20261118-29',
+  './edicion-financiera.js?v=20261118-29',
+  './raiet-interacciones.js?v=20261118-29',
+  './raiet-respaldo.js?v=20261118-29',
+  './raiet-gestion.js?v=20261118-29',
+  './raiet-inventario.js?v=20261118-29',
+  './raiet-historia-clinica.js?v=20261118-29',
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'
 ];
 

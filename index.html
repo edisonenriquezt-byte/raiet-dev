@@ -127,7 +127,7 @@
   }
 </style>
 <script src="./raiet-native.js"></script>
-<script src="./acceso-esabas.js?v=20261116-28"></script>
+<script src="./acceso-esabas.js?v=20261118-29"></script>
 <!-- FIN CONTROL DE ACCESO -->
 
   <style>
@@ -671,9 +671,55 @@
   </nav>
 
   <script>
-    if ('serviceWorker' in navigator) {
-      if (location.protocol==='https:') navigator.serviceWorker.register('./sw.js?v=20261116-28',{updateViaCache:'none'}).catch(function(err) { console.log('SW error:', err); });
-    }
+    // Actualizaciones WEB: avisar cuando el navegador haya activado una nueva
+    // versión, sin recargar formularios ni interrumpir escrituras en curso.
+    (function registrarActualizacionesWeb() {
+      if (!('serviceWorker' in navigator) || location.protocol !== 'https:') return;
+      if (window.RAIET_NATIVE && window.RAIET_NATIVE.enabled) return;
+      var teniaControlador = !!navigator.serviceWorker.controller;
+      var ultimoChequeo = 0;
+      function ofrecerActualizacion() {
+        if (!teniaControlador || document.getElementById('raiet-actualizacion-web')) return;
+        var caja = document.createElement('div');
+        caja.id = 'raiet-actualizacion-web';
+        caja.setAttribute('role', 'status');
+        caja.style.cssText = 'position:fixed;left:12px;right:12px;bottom:86px;z-index:99998;padding:12px;border:1px solid #60a5fa;border-radius:10px;background:#10243a;color:#fff;box-shadow:0 8px 25px #0009;font:13px Arial,sans-serif;';
+        var texto = document.createElement('p');
+        texto.textContent = 'Hay una nueva versión de RAIET web. Guarda cualquier dato que estés escribiendo antes de actualizar.';
+        texto.style.cssText = 'margin:0 0 10px;';
+        var boton = document.createElement('button');
+        boton.type = 'button';
+        boton.textContent = 'Actualizar ahora';
+        boton.style.cssText = 'background:#2563eb;color:#fff;border:0;border-radius:7px;padding:9px 14px;font-weight:bold;cursor:pointer;margin-right:8px;';
+        boton.addEventListener('click', function() { window.location.reload(); });
+        var despues = document.createElement('button');
+        despues.type = 'button';
+        despues.textContent = 'Más tarde';
+        despues.style.cssText = 'background:transparent;color:#cbd5e1;border:1px solid #64748b;border-radius:7px;padding:9px 12px;cursor:pointer;';
+        despues.addEventListener('click', function() { caja.remove(); });
+        caja.append(texto, boton, despues);
+        document.body.appendChild(caja);
+      }
+      navigator.serviceWorker.addEventListener('controllerchange', function() {
+        if (teniaControlador) ofrecerActualizacion();
+        else teniaControlador = true;
+      });
+      navigator.serviceWorker.register('./sw.js?v=20261118-29', { updateViaCache: 'none' })
+        .then(function(registro) {
+          if (registro.waiting) ofrecerActualizacion();
+          function comprobarAlVolver() {
+            if (document.hidden || !navigator.onLine) return;
+            if (Date.now() - ultimoChequeo < 5 * 60 * 1000) return;
+            ultimoChequeo = Date.now();
+            registro.update().catch(function(err) { console.debug('Comprobación web pendiente:', err); });
+          }
+          window.addEventListener('focus', comprobarAlVolver);
+          document.addEventListener('visibilitychange', function() {
+            if (!document.hidden) comprobarAlVolver();
+          });
+        })
+        .catch(function(err) { console.log('SW error:', err); });
+    })();
 
     var SUPABASE_URL = 'https://fwkdtcecdwxezzkphxiv.supabase.co';
     var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ3a2R0Y2VjZHd4ZXp6a3BoeGl2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE1NzMzNTUsImV4cCI6MjEwNzE0OTM1NX0.zLYmVghKuZl6pkGBUGwHfxFPKoT3ppU9WGq_rpL4yEI';
@@ -3139,12 +3185,12 @@
 })();
 
 </script>
-<script src="./mejoras.js?v=20261116-28"></script>
-<script src="./edicion-financiera.js?v=20261116-28"></script>
-<script src="./raiet-interacciones.js?v=20261116-28"></script>
-<script src="./raiet-respaldo.js?v=20261116-28"></script>
-<script src="./raiet-gestion.js?v=20261116-28"></script>
-<script src="./raiet-inventario.js?v=20261116-28"></script>
-<script src="./raiet-historia-clinica.js?v=20261116-28"></script>
+<script src="./mejoras.js?v=20261118-29"></script>
+<script src="./edicion-financiera.js?v=20261118-29"></script>
+<script src="./raiet-interacciones.js?v=20261118-29"></script>
+<script src="./raiet-respaldo.js?v=20261118-29"></script>
+<script src="./raiet-gestion.js?v=20261118-29"></script>
+<script src="./raiet-inventario.js?v=20261118-29"></script>
+<script src="./raiet-historia-clinica.js?v=20261118-29"></script>
 </body>
 </html>

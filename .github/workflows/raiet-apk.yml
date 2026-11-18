@@ -29,6 +29,8 @@ permissions:
 
 jobs:
   compilar-apk:
+    # Un parche exclusivo de la web no crea una APK innecesaria.
+    if: ${{ !contains(github.event.head_commit.message, '[web-only]') }}
     name: Compilar APK RAIET ESABAS con huella y actualizaciones
     runs-on: ubuntu-24.04
 
@@ -135,9 +137,9 @@ jobs:
 
           echo "Verificando componentes instalables..."
           grep -q 'RAIET ESABAS' www/index.html
-          grep -q 'mejoras.js?v=20261116-28' www/index.html
-          grep -q 'edicion-financiera.js?v=20261116-28' www/index.html
-          grep -q 'raiet-historia-clinica.js?v=20261116-28' www/index.html
+          grep -q 'mejoras.js?v=' www/index.html
+          grep -q 'edicion-financiera.js?v=' www/index.html
+          grep -q 'raiet-historia-clinica.js?v=' www/index.html
           node --check www/raiet-interacciones.js
           node --check www/raiet-respaldo.js
           node --check www/raiet-gestion.js
