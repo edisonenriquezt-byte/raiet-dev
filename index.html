@@ -405,6 +405,7 @@
     <!-- 3. CUENTAS POR PAGAR -->
     <section id="tab-pagos" class="tab-content">
       <div class="card">
+        <div class="form-group"><label>Proveedor / acreedor registrado (opcional)</label><select id="pago-acreedor-existente" onchange="esabasSeleccionarProveedorPago()"><option value="">-- Nuevo proveedor --</option></select></div>
         <div style="display:grid; grid-template-columns: 1.3fr 1fr; gap: 8px;">
           <div class="form-group"><label>Acreedor / Proveedor</label><input type="text" id="pago-concepto" placeholder="Ej. El Tuti"></div>
           <div class="form-group"><label>Detalle / Nota</label><input type="text" id="pago-detalle" placeholder="Supermercado / Insumos"></div>
@@ -1820,19 +1821,62 @@
     }
 
     // 3. PAGOS (PROVEEDORES)
+    // La ficha del proveedor se reutiliza al registrar nuevas obligaciones.
+    function actualizarProveedoresPago() {
+      var sel = document.getElementById('pago-acreedor-existente');
+      if (!sel) return;
+      var previo = sel.value;
+      sel.replaceChildren();
+      var nuevo = document.createElement('option');
+      nuevo.value = '';
+      nuevo.textContent = '-- Nuevo proveedor --';
+      sel.appendChild(nuevo);
+      cachePagos.filter(function(p) { return p && p.id && !String(p.id).startsWith('loc_'); })
+        .slice().sort(function(a, b) { return String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es'); })
+        .forEach(function(p) {
+          var option = document.createElement('option');
+          option.value = p.id;
+          option.textContent = p.nombre || 'Proveedor sin nombre';
+          sel.appendChild(option);
+        });
+      if (cachePagos.some(function(p) { return String(p.id) === String(previo) && !String(p.id).startsWith('loc_'); })) sel.value = previo;
+      else if (previo) esabasSeleccionarProveedorPago();
+    }
+
+    function esabasSeleccionarProveedorPago() {
+      var sel = document.getElementById('pago-acreedor-existente');
+      var nombre = document.getElementById('pago-concepto');
+      var detalle = document.getElementById('pago-detalle');
+      var ficha = cachePagos.find(function(p) { return sel && sel.value && String(p.id) === String(sel.value); });
+      if (nombre) { nombre.value = ficha ? (ficha.nombre || '') : ''; nombre.readOnly = !!ficha; }
+      if (detalle) { detalle.value = ficha ? (ficha.detalle || '') : ''; detalle.readOnly = !!ficha; }
+    }
+
     async function cargarPagos() {
       dibujarPagos();
+      actualizarProveedoresPago();
       if (navigator.onLine && db) {
         try {
           var res = await db.from('acreedores').select('*, pagos_cargos(*), pagos_abonos(*)').order('creado_el', { ascending: false });
-          if (!res.error && res.data) { cachePagos = res.data; guardarMemoriaLocal(); dibujarPagos(); }
+          if (!res.error && res.data) {
+            cachePagos = res.data;
+            guardarMemoriaLocal();
+            dibujarPagos();
+            actualizarProveedoresPago();
+          }
         } catch(e) {}
       }
     }
 
     async function guardarCuentaPorPagar() {
-      var nombre = document.getElementById('pago-concepto').value.trim();
-      var detalle = document.getElementById('pago-detalle').value.trim() || 'Insumos';
+      var acrExistente = document.getElementById('pago-acreedor-existente').value;
+      var fichaExistente = acrExistente ? cachePagos.find(function(p) { return String(p.id) === String(acrExistente); }) : null;
+      if (acrExistente && !fichaExistente) return alert('No se encontró el proveedor. Actualiza la lista antes de registrar la obligación.');
+      var nombre = fichaExistente ? fichaExistente.nombre : document.getElementById('pago-concepto').value.trim();
+      var detalle = fichaExistente ? (fichaExistente.detalle || 'Insumos') : (document.getElementById('pago-detalle').value.trim() || 'Insumos');
+      if (!acrExistente && cachePagos.some(function(p) { return String(p.nombre || '').trim().toLowerCase() === String(nombre).toLowerCase(); })) {
+        return alert('Ya existe una ficha con ese nombre. Selecciona el proveedor registrado para evitar duplicados.');
+      }
       var numFact = document.getElementById('pago-num').value.trim();
       var fEmision = document.getElementById('pago-emision').value || hoyStr;
       var itemNom = document.getElementById('pago-item').value.trim() || detalle;
@@ -1846,7 +1890,7 @@
       var cuotasPactadas = obtenerCuotasDeContenedor('contenedor-cuotas-pago');
 
       procesarArchivoImagen(document.getElementById('pago-foto'), async function(fotoBase64) {
-        var idAcr = 'loc_p_' + Date.now();
+        var idAcr = acrExistente || 'loc_p_' + Date.now();
         var idCargo = 'loc_pc_' + Date.now();
         var saldoCargo = Math.max(0, monto - abonoIni);
 
@@ -1879,13 +1923,21 @@
           });
         });
 
-        cachePagos.unshift(nuevoAcreedor);
+        if (fichaExistente) {
+          if (!fichaExistente.pagos_cargos) fichaExistente.pagos_cargos = [];
+          if (!fichaExistente.pagos_abonos) fichaExistente.pagos_abonos = [];
+          fichaExistente.pagos_cargos.push(nuevoCargo);
+          fichaExistente.pagos_abonos.push(...nuevoAcreedor.pagos_abonos);
+        } else {
+          cachePagos.unshift(nuevoAcreedor);
+        }
         pagosAbiertos.push(String(idAcr));
         guardarMemoriaLocal();
         dibujarPagos();
 
-        document.getElementById('pago-concepto').value = '';
-        document.getElementById('pago-detalle').value = '';
+        document.getElementById('pago-acreedor-existente').value = '';
+        esabasSeleccionarProveedorPago();
+        actualizarProveedoresPago();
         document.getElementById('pago-num').value = '';
         document.getElementById('pago-item').value = '';
         document.getElementById('pago-monto').value = '';
@@ -1895,7 +1947,7 @@
 
         if (navigator.onLine && db) {
           try {
-            var a = await db.from('acreedores').insert({ nombre: nombre, detalle: detalle }).select().single();
+            var a = acrExistente ? { data: { id: acrExistente } } : await db.from('acreedores').insert({ nombre: nombre, detalle: detalle }).select().single();
             if (a.data) {
               nuevoAcreedor.id = a.data.id;
               var pc = await db.from('pagos_cargos').insert({
